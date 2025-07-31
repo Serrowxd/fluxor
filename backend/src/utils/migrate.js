@@ -91,6 +91,9 @@ const createTables = async () => {
         predicted_demand FLOAT NOT NULL,
         confidence_score FLOAT DEFAULT 0.5,
         confidence_level VARCHAR(50),
+        model_used VARCHAR(50) DEFAULT 'prophet',
+        upper_bound FLOAT,
+        lower_bound FLOAT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(product_id, forecast_date)
       )
@@ -166,6 +169,96 @@ const createTables = async () => {
     `);
     console.log("Created analytics_cache table");
 
+    // Create forecast_accuracy table for tracking prediction performance
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS forecast_accuracy (
+        accuracy_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        forecast_date DATE NOT NULL,
+        predicted_demand FLOAT NOT NULL,
+        actual_demand FLOAT NOT NULL,
+        accuracy_percentage FLOAT GENERATED ALWAYS AS (
+          CASE 
+            WHEN predicted_demand = 0 AND actual_demand = 0 THEN 100.0
+            WHEN predicted_demand = 0 THEN 0.0
+            ELSE 100.0 - (ABS(predicted_demand - actual_demand) / predicted_demand * 100.0)
+          END
+        ) STORED,
+        absolute_error FLOAT GENERATED ALWAYS AS (ABS(predicted_demand - actual_demand)) STORED,
+        percentage_error FLOAT GENERATED ALWAYS AS (
+          CASE 
+            WHEN actual_demand = 0 THEN 
+              CASE WHEN predicted_demand = 0 THEN 0.0 ELSE 100.0 END
+            ELSE (predicted_demand - actual_demand) / actual_demand * 100.0
+          END
+        ) STORED,
+        model_used VARCHAR(50) DEFAULT 'prophet',
+        confidence_level VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(product_id, forecast_date)
+      )
+    `);
+    console.log("Created forecast_accuracy table");
+
+    // Create dead_stock_analysis table for tracking slow-moving inventory
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS dead_stock_analysis (
+        analysis_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        analysis_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        days_without_sale INTEGER NOT NULL,
+        current_stock_value DECIMAL(12,2) NOT NULL,
+        velocity_score FLOAT DEFAULT 0,
+        dead_stock_classification VARCHAR(50) CHECK (dead_stock_classification IN ('slow_moving', 'dead_stock', 'obsolete')),
+        liquidation_priority INTEGER DEFAULT 0,
+        suggested_discount_percentage FLOAT DEFAULT 0,
+        estimated_recovery_value DECIMAL(12,2) DEFAULT 0,
+        clearance_recommendation TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created dead_stock_analysis table");
+
+    // Create forecast_accuracy_metrics table for aggregated model performance
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS forecast_accuracy_metrics (
+        metric_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        category VARCHAR(100),
+        time_period VARCHAR(50) NOT NULL, -- 'daily', 'weekly', 'monthly'
+        period_start DATE NOT NULL,
+        period_end DATE NOT NULL,
+        total_forecasts INTEGER DEFAULT 0,
+        mean_absolute_error FLOAT DEFAULT 0,
+        mean_absolute_percentage_error FLOAT DEFAULT 0,
+        root_mean_square_error FLOAT DEFAULT 0,
+        forecast_bias FLOAT DEFAULT 0,
+        accuracy_percentage FLOAT DEFAULT 0,
+        model_used VARCHAR(50) DEFAULT 'prophet',
+        data_quality_score FLOAT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(product_id, time_period, period_start, period_end)
+      )
+    `);
+    console.log("Created forecast_accuracy_metrics table");
+
+    // Create external_factors table for enhanced forecasting
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS external_factors (
+        factor_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        factor_type VARCHAR(50) NOT NULL, -- 'holiday', 'event', 'promotion', 'weather'
+        factor_name VARCHAR(255) NOT NULL,
+        factor_date DATE NOT NULL,
+        impact_coefficient FLOAT DEFAULT 1.0,
+        category_affected VARCHAR(100),
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        store_id UUID REFERENCES stores(store_id) ON DELETE CASCADE,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created external_factors table");
+
     // Create enhanced indexes for performance optimization
     await db.query(`
       CREATE INDEX IF NOT EXISTS idx_sales_sale_date ON sales(sale_date);
@@ -179,6 +272,18 @@ const createTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_analytics_cache_key ON analytics_cache(cache_key);
       CREATE INDEX IF NOT EXISTS idx_analytics_cache_expires ON analytics_cache(expires_at);
       CREATE INDEX IF NOT EXISTS idx_product_cost_history_product_date ON product_cost_history(product_id, effective_date DESC);
+      
+      -- New indexes for forecast accuracy and dead stock analysis
+      CREATE INDEX IF NOT EXISTS idx_forecast_accuracy_product_date ON forecast_accuracy(product_id, forecast_date);
+      CREATE INDEX IF NOT EXISTS idx_forecast_accuracy_date ON forecast_accuracy(forecast_date);
+      CREATE INDEX IF NOT EXISTS idx_forecast_accuracy_accuracy ON forecast_accuracy(accuracy_percentage);
+      CREATE INDEX IF NOT EXISTS idx_dead_stock_analysis_product ON dead_stock_analysis(product_id);
+      CREATE INDEX IF NOT EXISTS idx_dead_stock_analysis_date ON dead_stock_analysis(analysis_date);
+      CREATE INDEX IF NOT EXISTS idx_dead_stock_classification ON dead_stock_analysis(dead_stock_classification);
+      CREATE INDEX IF NOT EXISTS idx_forecast_accuracy_metrics_product_period ON forecast_accuracy_metrics(product_id, time_period, period_start);
+      CREATE INDEX IF NOT EXISTS idx_external_factors_date ON external_factors(factor_date);
+      CREATE INDEX IF NOT EXISTS idx_external_factors_type ON external_factors(factor_type);
+      CREATE INDEX IF NOT EXISTS idx_external_factors_product ON external_factors(product_id);
     `);
     console.log("Created enhanced indexes");
 
