@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  LayoutDashboard, 
-  TrendingUp, 
-  Package, 
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Package,
   FileText,
-  ChevronDown
+  BarChart3,
+  ChevronDown,
 } from "lucide-react";
 
 interface Tab {
@@ -18,6 +19,7 @@ interface Tab {
 
 const tabs: Tab[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "forecasts", label: "Forecasts", icon: TrendingUp },
   { id: "reorder", label: "Reorder", icon: Package },
   { id: "reports", label: "Reports", icon: FileText },
@@ -29,19 +31,28 @@ interface DashboardTabsProps {
   className?: string;
 }
 
-export function DashboardTabs({ activeTab, onTabChange, className }: DashboardTabsProps) {
+export function DashboardTabs({
+  activeTab,
+  onTabChange,
+  className,
+}: DashboardTabsProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const activeTabData = tabs.find(tab => tab.id === activeTab);
+  const activeTabData = tabs.find((tab) => tab.id === activeTab);
 
   return (
-    <div className={cn("border-b border-gray-200 dark:border-gray-800", className)}>
+    <div
+      className={cn("border-b border-gray-200 dark:border-gray-800", className)}
+    >
       {/* Desktop Tabs */}
-      <nav className="hidden md:flex space-x-1 px-6" aria-label="Dashboard tabs">
+      <nav
+        className="hidden md:flex space-x-1 px-6"
+        aria-label="Dashboard tabs"
+      >
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
-          
+
           return (
             <button
               key={tab.id}
@@ -78,10 +89,12 @@ export function DashboardTabs({ activeTab, onTabChange, className }: DashboardTa
               </>
             )}
           </span>
-          <ChevronDown className={cn(
-            "h-4 w-4 transition-transform",
-            isMobileMenuOpen && "rotate-180"
-          )} />
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform",
+              isMobileMenuOpen && "rotate-180"
+            )}
+          />
         </button>
 
         {isMobileMenuOpen && (
@@ -89,7 +102,7 @@ export function DashboardTabs({ activeTab, onTabChange, className }: DashboardTa
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
-              
+
               return (
                 <button
                   key={tab.id}

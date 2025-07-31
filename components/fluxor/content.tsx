@@ -7,6 +7,10 @@ import { ReorderSuggestions } from "@/components/dashboard/reorder-suggestions";
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs";
 import { AlertBanner, AlertItem } from "@/components/dashboard/alert-banner";
 import { SyncStatus } from "@/components/dashboard/sync-status";
+import { AnalyticsOverview } from "@/components/dashboard/analytics-overview";
+import { TurnoverChart } from "@/components/dashboard/turnover-chart";
+import { MarginAnalysisChart } from "@/components/dashboard/margin-analysis-chart";
+import { StockoutTracker } from "@/components/dashboard/stockout-tracker";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Store, Download, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -27,6 +31,8 @@ export default function Content() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [lastSyncTime, setLastSyncTime] = useState<Date | undefined>();
   const [syncProgress, setSyncProgress] = useState<number | undefined>();
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   // Check if this is a dev or demo user
   const isDevUser = user?.user_id === "dev-user-123";
@@ -46,9 +52,9 @@ export default function Content() {
   // Generate alerts based on inventory data
   useEffect(() => {
     const newAlerts: AlertItem[] = [];
-    
+
     // Check for low stock items
-    const lowStockItems = suggestions.filter(s => s.urgency === "high");
+    const lowStockItems = suggestions.filter((s) => s.urgency === "high");
     if (lowStockItems.length > 0) {
       newAlerts.push({
         id: "low-stock",
@@ -56,18 +62,20 @@ export default function Content() {
         message: `${lowStockItems.length} products need immediate reordering`,
         link: "#",
         linkText: "View Reorder Suggestions",
-        priority: "high"
+        priority: "high",
       });
     }
 
     // Check for medium urgency items
-    const mediumUrgencyItems = suggestions.filter(s => s.urgency === "medium");
+    const mediumUrgencyItems = suggestions.filter(
+      (s) => s.urgency === "medium"
+    );
     if (mediumUrgencyItems.length > 0) {
       newAlerts.push({
         id: "medium-stock",
         type: "stock",
         message: `${mediumUrgencyItems.length} products will need reordering soon`,
-        priority: "medium"
+        priority: "medium",
       });
     }
 
@@ -94,6 +102,134 @@ export default function Content() {
       });
     }
     setSalesData(salesTrend.slice(-7)); // Show last 7 days
+
+    // Generate dummy analytics data
+    setAnalyticsData({
+      summary: {
+        totalProducts: 45,
+        criticalStockProducts: 3,
+        lowStockProducts: 7,
+        overstockProducts: 2,
+        totalInventoryValue: 125000,
+        totalCarryingCost: 15750,
+        carryingCostPercentage: 12.6,
+        avgTurnoverRatio: 4.8,
+        totalLostRevenue: 8500,
+        avgStockoutRate: 3.2,
+        avgGrossMargin: 32.5,
+      },
+      details: {
+        turnover: [
+          {
+            product_id: "1",
+            product_name: "Classic T-Shirt",
+            sku: "TSH-CLS-M",
+            cogs: 15000,
+            avg_inventory_value: 2500,
+            turnover_ratio: 6.0,
+            performance_category: "excellent",
+            transaction_count: 156,
+          },
+          {
+            product_id: "2",
+            product_name: "Denim Jeans",
+            sku: "JNS-BLU-32",
+            cogs: 12000,
+            avg_inventory_value: 4000,
+            turnover_ratio: 3.0,
+            performance_category: "fair",
+            transaction_count: 89,
+          },
+          {
+            product_id: "3",
+            product_name: "Winter Jacket",
+            sku: "JKT-WIN-L",
+            cogs: 8000,
+            avg_inventory_value: 5000,
+            turnover_ratio: 1.6,
+            performance_category: "poor",
+            transaction_count: 34,
+          },
+        ],
+        margins: [
+          {
+            product_id: "1",
+            product_name: "Classic T-Shirt",
+            sku: "TSH-CLS-M",
+            unit_cost: 8.5,
+            selling_price: 24.99,
+            avg_selling_price: 23.5,
+            total_quantity_sold: 156,
+            total_revenue: 3666,
+            total_cost: 1326,
+            gross_profit: 2340,
+            gross_margin_percentage: 63.8,
+            list_price_margin_percentage: 66.0,
+            avg_revenue_per_unit: 23.5,
+          },
+          {
+            product_id: "2",
+            product_name: "Denim Jeans",
+            sku: "JNS-BLU-32",
+            unit_cost: 28.0,
+            selling_price: 79.99,
+            avg_selling_price: 75.0,
+            total_quantity_sold: 89,
+            total_revenue: 6675,
+            total_cost: 2492,
+            gross_profit: 4183,
+            gross_margin_percentage: 62.7,
+            list_price_margin_percentage: 65.0,
+            avg_revenue_per_unit: 75.0,
+          },
+          {
+            product_id: "3",
+            product_name: "Winter Jacket",
+            sku: "JKT-WIN-L",
+            unit_cost: 45.0,
+            selling_price: 159.99,
+            avg_selling_price: 140.0,
+            total_quantity_sold: 34,
+            total_revenue: 4760,
+            total_cost: 1530,
+            gross_profit: 3230,
+            gross_margin_percentage: 67.9,
+            list_price_margin_percentage: 71.9,
+            avg_revenue_per_unit: 140.0,
+          },
+        ],
+        stockouts: [
+          {
+            product_id: "2",
+            product_name: "Denim Jeans",
+            sku: "JNS-BLU-32",
+            stockout_events: 3,
+            total_stockout_hours: 72,
+            lost_sales: 15,
+            lost_revenue: 1125,
+            stockout_days: 3,
+            total_orders: 89,
+            total_demand_quantity: 104,
+            stockout_rate_percent: 3.4,
+            lost_sales_rate_percent: 14.4,
+          },
+          {
+            product_id: "3",
+            product_name: "Winter Jacket",
+            sku: "JKT-WIN-L",
+            stockout_events: 2,
+            total_stockout_hours: 48,
+            lost_sales: 8,
+            lost_revenue: 1120,
+            stockout_days: 2,
+            total_orders: 34,
+            total_demand_quantity: 42,
+            stockout_rate_percent: 5.9,
+            lost_sales_rate_percent: 19.0,
+          },
+        ],
+      },
+    });
 
     // Set inventory data with various stock levels
     setInventoryData([
@@ -213,7 +349,7 @@ export default function Content() {
     if (isDemoOrDevUser) {
       // Simulate sync for demo or dev user
       const interval = setInterval(() => {
-        setSyncProgress(prev => {
+        setSyncProgress((prev) => {
           if (prev === undefined || prev >= 100) {
             clearInterval(interval);
             return 100;
@@ -278,7 +414,7 @@ export default function Content() {
   };
 
   const handleAlertDismiss = (alertId: string) => {
-    setAlerts(alerts.filter(a => a.id !== alertId));
+    setAlerts(alerts.filter((a) => a.id !== alertId));
   };
 
   if (loading) {
@@ -319,13 +455,24 @@ export default function Content() {
       case "overview":
         return (
           <div className="space-y-6">
+            {/* Analytics Overview */}
+            {analyticsData && (
+              <AnalyticsOverview
+                data={analyticsData.summary}
+                isLoading={analyticsLoading}
+              />
+            )}
+
+            {/* Original Charts */}
             <div className="grid gap-6 md:grid-cols-2">
               <SalesChart data={salesData} />
               <InventoryChart data={inventoryData} />
             </div>
-            <ReorderSuggestions 
-              suggestions={suggestions.slice(0, 3)} 
-              onReorder={handleReorder} 
+
+            {/* Compact Reorder Suggestions */}
+            <ReorderSuggestions
+              suggestions={suggestions.slice(0, 3)}
+              onReorder={handleReorder}
               compact={true}
             />
           </div>
@@ -335,20 +482,81 @@ export default function Content() {
           <div className="space-y-6">
             <h2 className="text-xl font-semibold">Demand Forecasts</h2>
             <p className="text-muted-foreground">
-              AI-powered predictions for your inventory needs over the next 30 days.
+              AI-powered predictions for your inventory needs over the next 30
+              days.
             </p>
             {/* Forecast content will be implemented */}
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-8 text-center">
-              <p className="text-muted-foreground">Forecast details coming soon...</p>
+              <p className="text-muted-foreground">
+                Forecast details coming soon...
+              </p>
             </div>
+          </div>
+        );
+      case "analytics":
+        return (
+          <div className="space-y-6">
+            {analyticsData && (
+              <>
+                {/* Turnover Analysis */}
+                <TurnoverChart
+                  data={analyticsData.details.turnover}
+                  period="30 days"
+                />
+
+                {/* Margin Analysis */}
+                <MarginAnalysisChart
+                  data={analyticsData.details.margins}
+                  period="30 days"
+                />
+
+                {/* Stockout Tracking */}
+                <StockoutTracker
+                  data={analyticsData.details.stockouts}
+                  period="30 days"
+                  timeSeriesData={[
+                    {
+                      date: "Jan 1",
+                      stockout_events: 2,
+                      lost_revenue: 150,
+                      affected_products: 2,
+                    },
+                    {
+                      date: "Jan 2",
+                      stockout_events: 1,
+                      lost_revenue: 75,
+                      affected_products: 1,
+                    },
+                    {
+                      date: "Jan 3",
+                      stockout_events: 3,
+                      lost_revenue: 425,
+                      affected_products: 2,
+                    },
+                    {
+                      date: "Jan 4",
+                      stockout_events: 0,
+                      lost_revenue: 0,
+                      affected_products: 0,
+                    },
+                    {
+                      date: "Jan 5",
+                      stockout_events: 1,
+                      lost_revenue: 120,
+                      affected_products: 1,
+                    },
+                  ]}
+                />
+              </>
+            )}
           </div>
         );
       case "reorder":
         return (
           <div className="space-y-6">
-            <ReorderSuggestions 
-              suggestions={suggestions} 
-              onReorder={handleReorder} 
+            <ReorderSuggestions
+              suggestions={suggestions}
+              onReorder={handleReorder}
               showBulkActions={true}
             />
           </div>
@@ -398,10 +606,7 @@ export default function Content() {
     <div className="space-y-6">
       {/* Alert Banner */}
       {alerts.length > 0 && (
-        <AlertBanner 
-          alerts={alerts}
-          onDismiss={handleAlertDismiss}
-        />
+        <AlertBanner alerts={alerts} onDismiss={handleAlertDismiss} />
       )}
 
       {/* Header with Sync Status */}
@@ -428,15 +633,10 @@ export default function Content() {
       </div>
 
       {/* Tabbed Navigation */}
-      <DashboardTabs 
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Tab Content */}
-      <div className="mt-6">
-        {renderTabContent()}
-      </div>
+      <div className="mt-6">{renderTabContent()}</div>
     </div>
   );
 }
