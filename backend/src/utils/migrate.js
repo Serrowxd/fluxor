@@ -259,6 +259,156 @@ const createTables = async () => {
     `);
     console.log("Created external_factors table");
 
+    // === MULTI-CHANNEL SUPPORT TABLES (Ticket #3) ===
+
+    // Create channels table for managing different sales channels
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS channels (
+        channel_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        channel_type VARCHAR(50) NOT NULL, -- 'shopify', 'amazon', 'ebay', 'square', 'custom'
+        channel_name VARCHAR(255) NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        sync_enabled BOOLEAN DEFAULT true,
+        rate_limit_per_minute INTEGER DEFAULT 60,
+        retry_attempts INTEGER DEFAULT 3,
+        webhook_secret VARCHAR(255),
+        configuration JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created channels table");
+
+    // Create channel_credentials table for storing encrypted API credentials
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS channel_credentials (
+        credential_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        store_id UUID REFERENCES stores(store_id) ON DELETE CASCADE,
+        channel_id UUID REFERENCES channels(channel_id) ON DELETE CASCADE,
+        credentials_encrypted TEXT NOT NULL, -- JSON encrypted credentials
+        expires_at TIMESTAMP,
+        last_refreshed TIMESTAMP,
+        is_valid BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(store_id, channel_id)
+      )
+    `);
+    console.log("Created channel_credentials table");
+
+    // Create channel_products table for mapping products across channels
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS channel_products (
+        channel_product_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        channel_id UUID REFERENCES channels(channel_id) ON DELETE CASCADE,
+        external_product_id VARCHAR(255) NOT NULL, -- Product ID in external channel
+        external_variant_id VARCHAR(255),
+        channel_sku VARCHAR(255),
+        channel_product_name VARCHAR(500),
+        sync_enabled BOOLEAN DEFAULT true,
+        last_synced TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(product_id, channel_id),
+        UNIQUE(channel_id, external_product_id)
+      )
+    `);
+    console.log("Created channel_products table");
+
+    // Create inventory_allocations table for managing stock across channels
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS inventory_allocations (
+        allocation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        channel_id UUID REFERENCES channels(channel_id) ON DELETE CASCADE,
+        allocated_quantity INTEGER NOT NULL DEFAULT 0,
+        reserved_quantity INTEGER DEFAULT 0,
+        buffer_quantity INTEGER DEFAULT 0,
+        priority INTEGER DEFAULT 1, -- Higher number = higher priority
+        allocation_rules JSONB DEFAULT '{}',
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(product_id, channel_id),
+        CHECK (allocated_quantity >= 0),
+        CHECK (reserved_quantity >= 0),
+        CHECK (buffer_quantity >= 0)
+      )
+    `);
+    console.log("Created inventory_allocations table");
+
+    // Create sync_status table for tracking synchronization status
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS sync_status (
+        sync_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        store_id UUID REFERENCES stores(store_id) ON DELETE CASCADE,
+        channel_id UUID REFERENCES channels(channel_id) ON DELETE CASCADE,
+        sync_type VARCHAR(50) NOT NULL, -- 'inventory', 'orders', 'products'
+        status VARCHAR(50) NOT NULL, -- 'pending', 'running', 'completed', 'failed', 'paused'
+        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP,
+        total_records INTEGER DEFAULT 0,
+        processed_records INTEGER DEFAULT 0,
+        successful_records INTEGER DEFAULT 0,
+        failed_records INTEGER DEFAULT 0,
+        error_message TEXT,
+        sync_details JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created sync_status table");
+
+    // Create sync_conflicts table for tracking and resolving conflicts
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS sync_conflicts (
+        conflict_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        conflict_type VARCHAR(50) NOT NULL, -- 'stock_mismatch', 'price_mismatch', 'product_mismatch'
+        priority VARCHAR(20) DEFAULT 'medium', -- 'low', 'medium', 'high', 'critical'
+        status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'resolving', 'resolved', 'ignored'
+        conflict_data JSONB NOT NULL, -- Details of the conflict
+        resolution_strategy VARCHAR(100),
+        resolved_by UUID REFERENCES users(user_id),
+        resolved_at TIMESTAMP,
+        auto_resolved BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created sync_conflicts table");
+
+    // Create webhook_logs table for tracking all webhook activity
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS webhook_logs (
+        log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        channel_id UUID REFERENCES channels(channel_id) ON DELETE CASCADE,
+        webhook_type VARCHAR(100) NOT NULL,
+        http_method VARCHAR(10) NOT NULL,
+        payload JSONB,
+        headers JSONB,
+        signature VARCHAR(500),
+        signature_valid BOOLEAN,
+        processing_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'processed', 'failed', 'ignored'
+        processing_time_ms INTEGER,
+        error_message TEXT,
+        response_data JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        processed_at TIMESTAMP
+      )
+    `);
+    console.log("Created webhook_logs table");
+
+    // Insert default channels
+    await db.query(`
+      INSERT INTO channels (channel_type, channel_name, rate_limit_per_minute, configuration) VALUES
+      ('shopify', 'Shopify', 40, '{"api_version": "2023-10", "scopes": ["read_orders", "write_inventory", "read_products"]}'),
+      ('amazon', 'Amazon Seller Central', 200, '{"marketplace_id": "ATVPDKIKX0DER", "region": "us-east-1"}'),
+      ('ebay', 'eBay', 5000, '{"site_id": "0", "compatibility_level": "1193"}'),
+      ('square', 'Square POS', 1000, '{"environment": "production", "application_id": null}'),
+      ('custom', 'Custom REST API', 60, '{"base_url": null, "auth_type": "bearer"}')
+      ON CONFLICT DO NOTHING
+    `);
+    console.log("Inserted default channels");
+
     // Create enhanced indexes for performance optimization
     await db.query(`
       CREATE INDEX IF NOT EXISTS idx_sales_sale_date ON sales(sale_date);
@@ -284,6 +434,21 @@ const createTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_external_factors_date ON external_factors(factor_date);
       CREATE INDEX IF NOT EXISTS idx_external_factors_type ON external_factors(factor_type);
       CREATE INDEX IF NOT EXISTS idx_external_factors_product ON external_factors(product_id);
+      
+      -- Multi-channel indexes
+      CREATE INDEX IF NOT EXISTS idx_channel_credentials_store_channel ON channel_credentials(store_id, channel_id);
+      CREATE INDEX IF NOT EXISTS idx_channel_products_product_channel ON channel_products(product_id, channel_id);
+      CREATE INDEX IF NOT EXISTS idx_channel_products_external_id ON channel_products(channel_id, external_product_id);
+      CREATE INDEX IF NOT EXISTS idx_inventory_allocations_product_channel ON inventory_allocations(product_id, channel_id);
+      CREATE INDEX IF NOT EXISTS idx_sync_status_store_channel ON sync_status(store_id, channel_id);
+      CREATE INDEX IF NOT EXISTS idx_sync_status_status ON sync_status(status);
+      CREATE INDEX IF NOT EXISTS idx_sync_status_started_at ON sync_status(started_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_sync_conflicts_product ON sync_conflicts(product_id);
+      CREATE INDEX IF NOT EXISTS idx_sync_conflicts_status ON sync_conflicts(status);
+      CREATE INDEX IF NOT EXISTS idx_sync_conflicts_priority ON sync_conflicts(priority);
+      CREATE INDEX IF NOT EXISTS idx_webhook_logs_channel ON webhook_logs(channel_id);
+      CREATE INDEX IF NOT EXISTS idx_webhook_logs_created_at ON webhook_logs(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_webhook_logs_status ON webhook_logs(processing_status);
     `);
     console.log("Created enhanced indexes");
 

@@ -15,6 +15,7 @@ const alertRoutes = require("./routes/alerts");
 const reportRoutes = require("./routes/reports");
 const settingsRoutes = require("./routes/settings");
 const analyticsRoutes = require("./routes/analytics");
+const multiChannelRoutes = require("./routes/multi-channel");
 
 // Import middleware
 const { errorHandler } = require("./middleware/errorHandler");
@@ -62,6 +63,7 @@ app.use("/api/alerts", alertRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/multi-channel", multiChannelRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
