@@ -17,6 +17,11 @@ const settingsRoutes = require("./routes/settings");
 const analyticsRoutes = require("./routes/analytics");
 const multiChannelRoutes = require("./routes/multi-channel");
 
+// Supplier and Purchase Order routes (Ticket #4)
+const supplierRoutes = require("./routes/suppliers");
+const purchaseOrderRoutes = require("./routes/purchase-orders");
+const approvalWorkflowRoutes = require("./routes/approval-workflows");
+
 // Import middleware
 const { errorHandler } = require("./middleware/errorHandler");
 
@@ -64,6 +69,11 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/multi-channel", multiChannelRoutes);
+
+// Supplier and Purchase Order API routes (Ticket #4)
+app.use("/api/suppliers", supplierRoutes);
+app.use("/api/purchase-orders", purchaseOrderRoutes);
+app.use("/api/approval-workflows", approvalWorkflowRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

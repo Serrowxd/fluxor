@@ -49,6 +49,30 @@ const ebaySyncQueue = new Queue("ebay-sync", process.env.REDIS_URL);
 const squareSyncQueue = new Queue("square-sync", process.env.REDIS_URL);
 const customApiSyncQueue = new Queue("custom-api-sync", process.env.REDIS_URL);
 
+// Supplier and Purchase Order queues (Ticket #4)
+const supplierManagementQueue = new Queue(
+  "supplier-management",
+  process.env.REDIS_URL
+);
+const purchaseOrderQueue = new Queue("purchase-order", process.env.REDIS_URL);
+const reorderPointQueue = new Queue("reorder-point", process.env.REDIS_URL);
+const approvalWorkflowQueue = new Queue(
+  "approval-workflow",
+  process.env.REDIS_URL
+);
+const supplierCommunicationQueue = new Queue(
+  "supplier-communication",
+  process.env.REDIS_URL
+);
+const automatedReorderQueue = new Queue(
+  "automated-reorder",
+  process.env.REDIS_URL
+);
+const supplierPerformanceQueue = new Queue(
+  "supplier-performance",
+  process.env.REDIS_URL
+);
+
 module.exports = {
   redisClient,
   // Original queues
@@ -65,4 +89,12 @@ module.exports = {
   ebaySyncQueue,
   squareSyncQueue,
   customApiSyncQueue,
+  // Supplier and Purchase Order queues
+  supplierManagementQueue,
+  purchaseOrderQueue,
+  reorderPointQueue,
+  approvalWorkflowQueue,
+  supplierCommunicationQueue,
+  automatedReorderQueue,
+  supplierPerformanceQueue,
 };

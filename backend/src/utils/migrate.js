@@ -524,6 +524,284 @@ const createTables = async () => {
     `);
     console.log("Created refresh_inventory_metrics function");
 
+    // === SUPPLIER INTEGRATION AND PURCHASE ORDERS TABLES (Ticket #4) ===
+
+    // Create suppliers table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS suppliers (
+        supplier_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        store_id UUID REFERENCES stores(store_id) ON DELETE CASCADE,
+        supplier_name VARCHAR(255) NOT NULL,
+        contact_name VARCHAR(255),
+        email VARCHAR(255),
+        phone VARCHAR(50),
+        address_line1 VARCHAR(255),
+        address_line2 VARCHAR(255),
+        city VARCHAR(100),
+        state_province VARCHAR(100),
+        postal_code VARCHAR(20),
+        country VARCHAR(100),
+        payment_terms VARCHAR(100), -- e.g., "Net 30", "2/10 Net 30"
+        currency VARCHAR(3) DEFAULT 'USD',
+        tax_id VARCHAR(50),
+        website VARCHAR(255),
+        notes TEXT,
+        is_active BOOLEAN DEFAULT true,
+        preferred_supplier BOOLEAN DEFAULT false,
+        supplier_rating DECIMAL(3,2) DEFAULT 0, -- 0.00 to 5.00
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created suppliers table");
+
+    // Create supplier_products table for product-supplier mapping
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS supplier_products (
+        supplier_product_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        supplier_id UUID REFERENCES suppliers(supplier_id) ON DELETE CASCADE,
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        supplier_sku VARCHAR(255),
+        supplier_product_name VARCHAR(255),
+        lead_time_days INTEGER NOT NULL DEFAULT 7,
+        minimum_order_quantity INTEGER DEFAULT 1,
+        cost_per_unit DECIMAL(10,2) NOT NULL,
+        bulk_pricing JSONB DEFAULT '[]', -- Array of quantity breaks and prices
+        last_cost_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_primary_supplier BOOLEAN DEFAULT false,
+        discontinued BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(supplier_id, product_id)
+      )
+    `);
+    console.log("Created supplier_products table");
+
+    // Create purchase_orders table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS purchase_orders (
+        po_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        store_id UUID REFERENCES stores(store_id) ON DELETE CASCADE,
+        supplier_id UUID REFERENCES suppliers(supplier_id) ON DELETE CASCADE,
+        po_number VARCHAR(50) UNIQUE NOT NULL,
+        status VARCHAR(50) DEFAULT 'draft', -- draft, submitted, approved, rejected, received, cancelled
+        total_amount DECIMAL(12,2) DEFAULT 0,
+        currency VARCHAR(3) DEFAULT 'USD',
+        expected_delivery_date DATE,
+        actual_delivery_date DATE,
+        payment_terms VARCHAR(100),
+        shipping_address JSONB,
+        billing_address JSONB,
+        notes TEXT,
+        created_by UUID REFERENCES users(user_id),
+        approved_by UUID REFERENCES users(user_id),
+        approved_at TIMESTAMP,
+        submitted_at TIMESTAMP,
+        received_at TIMESTAMP,
+        cancelled_at TIMESTAMP,
+        cancellation_reason TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created purchase_orders table");
+
+    // Create purchase_order_items table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS purchase_order_items (
+        po_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        po_id UUID REFERENCES purchase_orders(po_id) ON DELETE CASCADE,
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        supplier_product_id UUID REFERENCES supplier_products(supplier_product_id),
+        quantity INTEGER NOT NULL CHECK (quantity > 0),
+        unit_cost DECIMAL(10,2) NOT NULL,
+        total_cost DECIMAL(12,2) GENERATED ALWAYS AS (quantity * unit_cost) STORED,
+        quantity_received INTEGER DEFAULT 0 CHECK (quantity_received >= 0),
+        quantity_pending INTEGER GENERATED ALWAYS AS (quantity - quantity_received) STORED,
+        expected_delivery_date DATE,
+        actual_delivery_date DATE,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CHECK (quantity_received <= quantity)
+      )
+    `);
+    console.log("Created purchase_order_items table");
+
+    // Create approval_workflows table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS approval_workflows (
+        workflow_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        store_id UUID REFERENCES stores(store_id) ON DELETE CASCADE,
+        workflow_name VARCHAR(255) NOT NULL,
+        description TEXT,
+        workflow_type VARCHAR(50) NOT NULL, -- 'purchase_order', 'expense', 'adjustment'
+        trigger_conditions JSONB NOT NULL, -- Conditions that trigger this workflow
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created approval_workflows table");
+
+    // Create approval_workflow_steps table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS approval_workflow_steps (
+        step_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        workflow_id UUID REFERENCES approval_workflows(workflow_id) ON DELETE CASCADE,
+        step_order INTEGER NOT NULL,
+        step_name VARCHAR(255) NOT NULL,
+        approver_user_id UUID REFERENCES users(user_id),
+        approver_role VARCHAR(100), -- Alternative to specific user
+        approval_criteria JSONB, -- Additional criteria for this step
+        is_required BOOLEAN DEFAULT true,
+        timeout_hours INTEGER DEFAULT 72,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(workflow_id, step_order)
+      )
+    `);
+    console.log("Created approval_workflow_steps table");
+
+    // Create purchase_order_approvals table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS purchase_order_approvals (
+        approval_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        po_id UUID REFERENCES purchase_orders(po_id) ON DELETE CASCADE,
+        workflow_id UUID REFERENCES approval_workflows(workflow_id),
+        step_id UUID REFERENCES approval_workflow_steps(step_id),
+        approver_user_id UUID REFERENCES users(user_id),
+        status VARCHAR(50) DEFAULT 'pending', -- pending, approved, rejected, skipped
+        approval_date TIMESTAMP,
+        rejection_reason TEXT,
+        comments TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created purchase_order_approvals table");
+
+    // Create supplier_performance table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS supplier_performance (
+        performance_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        supplier_id UUID REFERENCES suppliers(supplier_id) ON DELETE CASCADE,
+        po_id UUID REFERENCES purchase_orders(po_id),
+        metric_type VARCHAR(50) NOT NULL, -- delivery_time, quality, communication
+        metric_value DECIMAL(10,2),
+        metric_unit VARCHAR(20), -- days, percentage, rating
+        measurement_date DATE NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created supplier_performance table");
+
+    // Create reorder_rules table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reorder_rules (
+        rule_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID REFERENCES products(product_id) ON DELETE CASCADE,
+        supplier_id UUID REFERENCES suppliers(supplier_id) ON DELETE CASCADE,
+        reorder_point INTEGER NOT NULL CHECK (reorder_point >= 0),
+        reorder_quantity INTEGER NOT NULL CHECK (reorder_quantity > 0),
+        safety_stock INTEGER DEFAULT 0 CHECK (safety_stock >= 0),
+        seasonal_adjustment_factor DECIMAL(5,2) DEFAULT 1.00,
+        auto_reorder_enabled BOOLEAN DEFAULT false,
+        rule_priority INTEGER DEFAULT 1, -- Higher number = higher priority
+        effective_from DATE DEFAULT CURRENT_DATE,
+        effective_until DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(product_id, supplier_id)
+      )
+    `);
+    console.log("Created reorder_rules table");
+
+    // Create supplier_communications table for tracking communications
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS supplier_communications (
+        communication_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        supplier_id UUID REFERENCES suppliers(supplier_id) ON DELETE CASCADE,
+        po_id UUID REFERENCES purchase_orders(po_id),
+        communication_type VARCHAR(50) NOT NULL, -- email, phone, edi, portal
+        direction VARCHAR(10) NOT NULL, -- inbound, outbound
+        subject VARCHAR(255),
+        content TEXT,
+        status VARCHAR(50) DEFAULT 'sent', -- sent, delivered, read, responded, failed
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        delivered_at TIMESTAMP,
+        responded_at TIMESTAMP,
+        metadata JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Created supplier_communications table");
+
+    // Insert default approval workflow for purchase orders
+    await db.query(`
+      INSERT INTO approval_workflows (workflow_name, description, workflow_type, trigger_conditions, is_active)
+      VALUES 
+      ('Default PO Approval', 'Default approval workflow for purchase orders over $500', 'purchase_order', 
+       '{"min_amount": 500, "conditions": [{"field": "total_amount", "operator": "gte", "value": 500}]}', true)
+      ON CONFLICT DO NOTHING
+    `);
+    console.log("Inserted default approval workflow");
+
+    // Create indexes for supplier and purchase order tables
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_suppliers_store_active ON suppliers(store_id, is_active);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_supplier_products_product_supplier ON supplier_products(product_id, supplier_id);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_supplier_products_supplier_primary ON supplier_products(supplier_id, is_primary_supplier);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_purchase_orders_store_status ON purchase_orders(store_id, status);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_status ON purchase_orders(supplier_id, status);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_purchase_orders_created_at ON purchase_orders(created_at DESC);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_purchase_order_items_po ON purchase_order_items(po_id);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_purchase_order_items_product ON purchase_order_items(product_id);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_purchase_order_approvals_po_status ON purchase_order_approvals(po_id, status);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_supplier_performance_supplier_date ON supplier_performance(supplier_id, measurement_date DESC);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_reorder_rules_product ON reorder_rules(product_id);
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_reorder_rules_auto_enabled ON reorder_rules(auto_reorder_enabled) WHERE auto_reorder_enabled = true;
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_supplier_communications_supplier_date ON supplier_communications(supplier_id, sent_at DESC);
+    `);
+
+    console.log("Created indexes for supplier and purchase order tables");
+
     console.log("Database migration completed successfully!");
     process.exit(0);
   } catch (error) {
