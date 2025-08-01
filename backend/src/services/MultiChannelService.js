@@ -17,8 +17,10 @@ class MultiChannelService {
     this.allocationEngine = new InventoryAllocationEngine();
     this.conflictResolver = new ConflictResolutionEngine();
     this.syncMonitor = new SyncMonitoringService();
-    this.encryptionKey =
-      process.env.ENCRYPTION_KEY || "default-key-change-in-production";
+    if (!process.env.ENCRYPTION_KEY) {
+      throw new Error('ENCRYPTION_KEY environment variable is required');
+    }
+    this.encryptionKey = process.env.ENCRYPTION_KEY;
   }
 
   /**
@@ -642,15 +644,21 @@ class MultiChannelService {
   }
 
   encryptCredentials(credentials) {
-    const cipher = crypto.createCipher("aes-256-cbc", this.encryptionKey);
+    const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
     let encrypted = cipher.update(JSON.stringify(credentials), "utf8", "hex");
     encrypted += cipher.final("hex");
-    return encrypted;
+    return iv.toString('hex') + ':' + encrypted;
   }
 
   decryptCredentials(encryptedCredentials) {
-    const decipher = crypto.createDecipher("aes-256-cbc", this.encryptionKey);
-    let decrypted = decipher.update(encryptedCredentials, "hex", "utf8");
+    const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
+    const parts = encryptedCredentials.split(':');
+    const iv = Buffer.from(parts[0], 'hex');
+    const encrypted = parts[1];
+    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
     decrypted += decipher.final("utf8");
     return JSON.parse(decrypted);
   }

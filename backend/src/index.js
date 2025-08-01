@@ -6,6 +6,10 @@ const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
+// Validate environment variables before starting the application
+const EnvValidator = require("./utils/envValidator");
+EnvValidator.init();
+
 // Import routes
 const authRoutes = require("./routes/auth");
 const shopifyRoutes = require("./routes/shopify");
@@ -16,6 +20,7 @@ const reportRoutes = require("./routes/reports");
 const settingsRoutes = require("./routes/settings");
 const analyticsRoutes = require("./routes/analytics");
 const multiChannelRoutes = require("./routes/multi-channel");
+const healthRoutes = require("./routes/health");
 
 // Supplier and Purchase Order routes (Ticket #4)
 const supplierRoutes = require("./routes/suppliers");
@@ -54,7 +59,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Health check endpoint
+// Health check endpoints
+app.use("/api/health", healthRoutes);
+// Legacy health endpoint for backward compatibility
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });

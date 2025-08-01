@@ -9,10 +9,19 @@ jest.mock("bcrypt", () => ({
 
 // Mock crypto for consistent testing
 jest.mock("crypto", () => ({
-  randomBytes: jest.fn().mockReturnValue(Buffer.from("randomBytes")),
+  randomBytes: jest.fn().mockReturnValue(Buffer.from("0123456789abcdef0123456789abcdef", "hex")),
   randomFillSync: jest.fn(() => Buffer.alloc(16)),
   createCipher: jest.fn(),
   createDecipher: jest.fn(),
+  createCipheriv: jest.fn().mockReturnValue({
+    update: jest.fn().mockReturnValue("encrypted"),
+    final: jest.fn().mockReturnValue("final"),
+  }),
+  createDecipheriv: jest.fn().mockReturnValue({
+    update: jest.fn().mockReturnValue("decrypted"),
+    final: jest.fn().mockReturnValue("final"),
+  }),
+  scryptSync: jest.fn().mockReturnValue(Buffer.from("0123456789abcdef0123456789abcdef", "hex")),
   createHash: jest.fn().mockReturnValue({
     update: jest.fn().mockReturnThis(),
     digest: jest.fn().mockReturnValue("hashedValue"),
@@ -50,7 +59,8 @@ jest.mock('bull', () => {
 // Global mocks for common modules that might be imported
 
 // Mock environment variables for testing
-process.env.JWT_SECRET = "test-jwt-secret";
+process.env.JWT_SECRET = "test-jwt-secret-with-sufficient-length-for-security";
+process.env.ENCRYPTION_KEY = "test-encryption-key-with-sufficient-length-for-security";
 process.env.NODE_ENV = "test";
 
 // Set test timeout

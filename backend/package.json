@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "migrate": "node src/utils/migrate.js",
+    "migrate": "node -e \"const MigrationRunner = require('./src/utils/migrationRunner'); new MigrationRunner().runMigrations().catch(console.error);\"",
+    "migrate:status": "node -e \"const MigrationRunner = require('./src/utils/migrationRunner'); new MigrationRunner().getStatus().catch(console.error);\"",
+    "migrate:rollback": "node -e \"const [,, migrationName] = process.argv; if (!migrationName) { console.error('Usage: npm run migrate:rollback <migration_name>'); process.exit(1); } const MigrationRunner = require('./src/utils/migrationRunner'); new MigrationRunner().rollback(migrationName).catch(console.error);\"",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
