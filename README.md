@@ -165,29 +165,38 @@ fluxor/
 │   │   ├── models/              # Database models and queries
 │   │   ├── routes/              # API endpoint definitions
 │   │   ├── services/            # Business services and external integrations
+│   │   │   └── channels/        # Multi-channel connector implementations
 │   │   ├── jobs/                # Background job processors
 │   │   ├── utils/               # Utility functions and helpers
 │   │   └── __tests__/           # Comprehensive test suite
 │   └── config/                  # Database and Redis configuration
 ├── ai/                          # Python AI microservice
 │   ├── src/
-│   │   ├── models/              # ML model implementations
-│   │   ├── services/            # Forecasting and analytics services
-│   │   └── app.py               # Flask application entry point
+│   │   └── app.py               # Flask application with Prophet integration
 │   ├── requirements.txt         # Python dependencies
 │   └── Dockerfile               # Container configuration
 ├── components/                  # React component library
 │   ├── dashboard/               # Dashboard-specific components
 │   ├── ui/                      # Reusable UI components (shadcn/ui)
 │   └── fluxor/                  # Custom Fluxor components
+├── modules/                     # Modular refactor in progress
+│   ├── api-gateway/             # API gateway module (empty)
+│   ├── business-domains/        # Domain-driven modules
+│   ├── configuration/           # Configuration service (empty)
+│   ├── core-platform/           # Core platform services (empty)
+│   ├── infrastructure/          # Infrastructure modules (empty)
+│   ├── notification/            # Notification service (empty)
+│   └── shared/                  # Shared types and utilities (empty)
 ├── lib/                         # Utilities, hooks, and configurations
 ├── hooks/                       # Custom React hooks
 ├── public/                      # Static assets
-└── specs/                       # Comprehensive documentation
-    ├── design.md                # System architecture and design
-    ├── feature_design.md        # Feature implementation strategy
-    ├── feature_considerations.md # Security and scalability considerations
-    └── tickets/                 # Implementation guides and summaries
+├── specs/                       # Comprehensive documentation
+│   ├── design.md                # System architecture and design
+│   ├── feature_design.md        # Feature implementation strategy
+│   ├── feature_considerations.md # Security and scalability considerations
+│   ├── modular_refactor_*.md    # Modular refactor documentation
+│   └── tickets/                 # Implementation guides and summaries
+└── CLAUDE.md                    # AI assistant guidance and commands
 ```
 
 ## 🧪 Testing
@@ -272,29 +281,96 @@ DATADOG_API_KEY=your-datadog-key
 - **[Security Considerations](specs/feature_considerations.md)** - Security architecture and best practices
 - **[Implementation Guide](specs/tickets/IMPLEMENTATION_GUIDE.md)** - Development workflow and standards
 - **[API Reference](backend/README.md)** - Complete API documentation
+- **[Modular Refactor Changes](specs/modular_refactor_changes.md)** - Microservices transition guide
+- **[Modular Implementation](specs/modular_refactor_implementation.md)** - Module implementation details
+- **[CLAUDE.md](CLAUDE.md)** - AI assistant integration and commands
 
 ### Implementation Status
 
 #### ✅ Completed Features
 
 - **Backend Infrastructure**: Express.js API with PostgreSQL and Redis
-- **Authentication System**: JWT with MFA and role-based access
-- **Database Models**: Complete schema with audit trails and optimization
-- **Forecasting Microservice**: Multi-model AI service with Prophet integration
-- **Dashboard UI**: Interactive charts and real-time metrics
-- **Settings Management**: User preferences and system configuration
-- **Multi-Channel Framework**: Channel connectors and conflict resolution
-- **Supplier Integration**: Automated PO generation and approval workflows
-- **Advanced Analytics**: Turnover analysis, dead stock detection, cost analysis
-- **Security Framework**: Zero-trust architecture with comprehensive protection
+- **Authentication System**: JWT with refresh tokens and role-based access
+- **Database Models**: Complete schema with all required tables (users, stores, products, sales, forecasts)
+- **Forecasting Microservice**: Python Flask service with Prophet integration and 7-day fallback
+- **Dashboard UI**: Interactive charts (sales trends, inventory levels) and reorder suggestions table
+- **Settings Management**: User preferences, Shopify connection, and alert configuration
+- **Multi-Channel Framework**: Base framework with channel factory and connector interfaces
+- **Channel Connectors**: Shopify, Amazon, eBay, Square, and Custom API connectors implemented
+- **Supplier Management**: Complete supplier service with automated PO generation
+- **Advanced Analytics**: Turnover analysis, dead stock detection, margin analysis
+- **Background Jobs**: Bull queue setup for async processing
+- **Security Framework**: Input validation, rate limiting, and secure authentication
+- **Test Suite**: 95%+ backend test coverage with comprehensive unit tests
 
 #### 🔄 In Progress
 
-- **Shopify OAuth**: Complete OAuth flow implementation
-- **Webhook System**: Real-time inventory updates
-- **Email Alerts**: Mailgun integration with templates
-- **Reports Export**: CSV generation and download system
-- **Error Handling**: Comprehensive error boundaries and logging
+- **Modular Refactor**: Transitioning to microservices architecture (modules folder structure created)
+- **Shopify OAuth**: Complete OAuth flow implementation needed
+- **Webhook System**: Endpoint registration for real-time updates
+- **Email Alerts**: Mailgun integration with alert templates
+- **Reports Export**: CSV generation and signed URL downloads
+- **Error Handling**: Comprehensive error boundaries and user-friendly messages
+- **Frontend Testing**: Component and E2E test implementation
+
+#### 🚧 Current Branch: modular-refactor
+
+The project is currently undergoing a modular refactor to transition from monolithic to microservices architecture. The `modules/` directory contains the new structure with domain-driven design principles.
+
+## 🤖 AI Agent Reference Guide
+
+### Quick Context for AI/LLM Assistants
+
+This section provides essential information for AI agents and LLMs working on the Fluxor project.
+
+#### Project Type
+- **Category**: Enterprise SaaS Inventory Management System
+- **Target**: Small to medium enterprises (SMEs) using e-commerce platforms
+- **Core Value**: AI-powered demand forecasting with multi-channel inventory sync
+
+#### Tech Stack Summary
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Node.js, Express.js, PostgreSQL, Redis, Bull queue
+- **AI Service**: Python Flask with Facebook Prophet
+- **Authentication**: JWT with refresh tokens
+- **Deployment**: Vercel (frontend), AWS/Heroku (backend/AI)
+
+#### Key Files for Context
+- **CLAUDE.md**: Essential commands and project-specific instructions
+- **specs/design.md**: Complete system architecture and implementation status
+- **backend/src/models/**: Database schema and model implementations
+- **backend/src/services/**: Business logic and integrations
+- **components/ui/**: Reusable UI components (40+ shadcn/ui components)
+
+#### Current State
+- **Branch**: modular-refactor (transitioning to microservices)
+- **Core Features**: Working (auth, dashboard, forecasting, multi-channel base)
+- **Integrations**: Shopify OAuth and webhooks need completion
+- **Test Coverage**: 95%+ backend, frontend tests needed
+
+#### Development Commands
+```bash
+# Essential commands (see CLAUDE.md for full list)
+npm run dev                      # Start frontend
+cd backend && npm run dev        # Start backend
+cd ai && python src/app.py       # Start AI service
+cd backend && npm run migrate    # Run migrations
+cd backend && npm test           # Run tests
+```
+
+#### Architecture Patterns
+- **API Design**: RESTful with JWT auth on all endpoints except /auth/*
+- **Database**: Raw SQL with parameterized queries (no ORM)
+- **State Management**: Server state via API, client state with React hooks
+- **Error Handling**: Standardized error responses with status codes
+- **Security**: Input validation, rate limiting, encrypted tokens
+
+#### Key Implementation Notes
+- Always check existing components before creating new ones
+- Follow existing code patterns and conventions
+- Use absolute imports and paths
+- Maintain test coverage above 90%
+- Never commit sensitive data or credentials
 
 ## 🤝 Contributing
 

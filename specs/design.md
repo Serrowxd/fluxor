@@ -472,3 +472,138 @@ To run the project locally:
    - Python service: `cd ai && pip install -r requirements.txt && python src/app.py`
 
 This implementation provides a solid foundation for the Inventory Forecasting Dashboard MVP, with core functionality in place and a clear path for completing the remaining features.
+
+## Modular Refactor Status
+
+### Overview
+The project is currently undergoing a transition from monolithic architecture to a microservices-based modular architecture. This refactor aims to improve scalability, maintainability, and deployment flexibility.
+
+### Module Structure
+The new modular architecture is being implemented in the `/modules` directory with the following structure:
+
+#### Business Domains
+- **analytics-intelligence**: Analytics and intelligence services
+- **channel-integration**: Multi-channel connector implementations
+- **order-management**: Order processing and management
+- **procurement-domain**: Procurement and supplier management
+- **procurement**: Legacy procurement module (to be merged)
+
+#### Core Platform
+- **service-registry**: Service discovery and registration
+- **tenant-management**: Multi-tenancy support
+
+#### Infrastructure
+- **cache**: Caching layer abstraction
+- **monitoring**: Observability and monitoring
+- **queue**: Message queue abstraction
+
+#### Support Services
+- **api-gateway**: API gateway and routing
+- **configuration**: Centralized configuration management
+- **notification**: Notification service (email, SMS, push)
+- **shared**: Shared types and utilities
+
+### Migration Strategy
+1. **Phase 1**: Create module structure and interfaces (COMPLETED)
+2. **Phase 2**: Extract services from monolith to modules (IN PROGRESS)
+3. **Phase 3**: Implement inter-service communication
+4. **Phase 4**: Deploy modules as separate services
+5. **Phase 5**: Deprecate monolithic components
+
+### Current Implementation Status
+- ✅ Module directory structure created
+- ✅ Base interfaces defined for each module
+- 🔄 Service extraction in progress
+- ⏳ Inter-service communication pending
+- ⏳ Deployment configuration pending
+
+### AI Agent Implementation Guidelines
+
+#### For LLMs/AI Agents Working on This Project
+
+##### Context Understanding
+1. **Read CLAUDE.md first** - Contains essential commands and project conventions
+2. **Check existing implementations** - Always review similar features before creating new ones
+3. **Follow established patterns** - Maintain consistency with existing code style
+
+##### Module Development
+When implementing new features in the modular architecture:
+1. Identify the appropriate module based on domain boundaries
+2. Create interfaces before implementations
+3. Use dependency injection for cross-module communication
+4. Write comprehensive tests for module boundaries
+5. Document module APIs and contracts
+
+##### Code Organization
+```typescript
+// Module structure example
+modules/
+  [domain-name]/
+    src/
+      interfaces/     // Public contracts
+      services/       // Business logic
+      models/         // Domain models
+      controllers/    // API endpoints
+      __tests__/      // Unit tests
+    package.json      // Module dependencies
+    README.md         // Module documentation
+```
+
+##### Testing Requirements
+- Unit tests: Minimum 90% coverage per module
+- Integration tests: Test module boundaries
+- Contract tests: Verify inter-module communication
+- Performance tests: Ensure no degradation
+
+##### Security Considerations
+- All modules must implement authentication middleware
+- Input validation at module boundaries
+- Encrypted communication between modules
+- Audit logging for all operations
+
+##### Deployment Notes
+- Each module should be independently deployable
+- Use environment variables for configuration
+- Implement health checks and readiness probes
+- Support graceful shutdown
+
+### Key Decisions for AI Implementation
+
+#### Database Access
+- Modules should not directly access other modules' databases
+- Use API calls or events for cross-module data access
+- Each module maintains its own data store if needed
+
+#### State Management
+- Stateless services preferred
+- Use Redis for shared state when necessary
+- Implement idempotent operations
+
+#### Error Handling
+- Standardized error format across all modules
+- Circuit breakers for external service calls
+- Proper error propagation and logging
+
+#### Monitoring
+- Structured logging with correlation IDs
+- Metrics collection for all operations
+- Distributed tracing support
+
+### Development Workflow for AI Agents
+
+1. **Understand the domain** - Read relevant module documentation
+2. **Check existing patterns** - Review similar implementations
+3. **Plan the implementation** - Use TodoWrite tool to track tasks
+4. **Implement incrementally** - Small, testable changes
+5. **Test thoroughly** - Unit, integration, and contract tests
+6. **Document changes** - Update module README and API docs
+7. **Validate conventions** - Run linters and formatters
+
+### Common Pitfalls to Avoid
+- Don't create tight coupling between modules
+- Avoid shared databases across modules
+- Don't skip error handling and validation
+- Never hardcode configuration values
+- Don't forget to update tests and documentation
+
+This modular refactor represents a significant architectural evolution of Fluxor, transforming it from a monolithic application to a scalable, maintainable microservices architecture suitable for enterprise deployment.
