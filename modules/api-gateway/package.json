@@ -1,0 +1,31 @@
+{
+  "name": "@fluxor/api-gateway",
+  "version": "1.0.0",
+  "description": "Advanced API gateway with routing, versioning, and transformations for Fluxor",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "http-proxy-middleware": "^2.0.6",
+    "joi": "^17.11.0",
+    "jsonpath": "^1.1.1",
+    "lodash": "^4.17.21",
+    "rate-limiter-flexible": "^3.0.0",
+    "swagger-ui-express": "^5.0.0",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.7"
+  },
+  "peerDependencies": {
+    "@fluxor/configuration": "^1.0.0",
+    "@fluxor/monitoring": "^1.0.0",
+    "@fluxor/rate-limiting": "^1.0.0",
+    "@fluxor/service-registry": "^1.0.0"
+  }
+}

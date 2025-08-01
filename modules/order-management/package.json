@@ -1,0 +1,38 @@
+{
+  "name": "@fluxor/order-management-module",
+  "version": "1.0.0",
+  "description": "Complete order lifecycle management module for Fluxor",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "order",
+    "fulfillment",
+    "returns",
+    "payment",
+    "shipping",
+    "saga",
+    "fluxor"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    }
+  }
+}

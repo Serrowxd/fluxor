@@ -1,0 +1,43 @@
+{
+  "name": "@fluxor/channel-integration-module",
+  "version": "1.0.0",
+  "description": "Multi-channel inventory synchronization module for Fluxor",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "channel",
+    "integration",
+    "sync",
+    "shopify",
+    "amazon",
+    "ebay",
+    "woocommerce",
+    "fluxor"
+  ],
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cron": "^2.4.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "nock": "^13.4.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    }
+  }
+}

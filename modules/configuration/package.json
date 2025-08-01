@@ -1,0 +1,27 @@
+{
+  "name": "@fluxor/configuration",
+  "version": "1.0.0",
+  "description": "Centralized configuration management with feature flags for Fluxor",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "joi": "^17.11.0",
+    "lodash": "^4.17.21",
+    "chokidar": "^3.5.3",
+    "dotenv": "^16.3.1",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.7"
+  },
+  "peerDependencies": {
+    "@fluxor/database": "^1.0.0",
+    "@fluxor/event-bus": "^1.0.0",
+    "@fluxor/cache": "^1.0.0"
+  }
+}

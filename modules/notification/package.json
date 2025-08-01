@@ -1,0 +1,28 @@
+{
+  "name": "@fluxor/notification",
+  "version": "1.0.0",
+  "description": "Multi-channel notification system for Fluxor",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.7",
+    "twilio": "^4.19.0",
+    "firebase-admin": "^11.11.0",
+    "handlebars": "^4.7.8",
+    "bull": "^4.11.4",
+    "redis": "^4.6.10"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.7"
+  },
+  "peerDependencies": {
+    "@fluxor/database": "^1.0.0",
+    "@fluxor/queue": "^1.0.0",
+    "@fluxor/event-bus": "^1.0.0"
+  }
+}

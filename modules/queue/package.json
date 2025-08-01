@@ -1,0 +1,42 @@
+{
+  "name": "@fluxor/queue-module",
+  "version": "1.0.0",
+  "description": "Multi-backend message queue module for Fluxor with job processing",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "queue",
+    "job",
+    "redis",
+    "rabbitmq",
+    "kafka",
+    "fluxor"
+  ],
+  "dependencies": {
+    "redis": "^4.6.0",
+    "amqplib": "^0.10.0",
+    "kafkajs": "^2.2.0",
+    "cron": "^2.4.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    }
+  }
+}
