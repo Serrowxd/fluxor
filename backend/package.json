@@ -40,12 +40,19 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/__tests__/setup/jest.setup.js"
+    ],
     "coveragePathIgnorePatterns": [
       "/node_modules/"
     ],
     "testMatch": [
-      "**/__tests__/**/*.js",
+      "**/__tests__/**/*.test.js",
       "**/?(*.)+(spec|test).js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "src/__tests__/setup/"
     ]
   }
 }

@@ -1,44 +1,50 @@
-const ReorderPointEngine = require('../../services/ReorderPointEngine');
-const { mockDb, resetMockDb, setupMockQuery } = require('../setup/testDb');
+const ReorderPointEngine = require("../../services/ReorderPointEngine");
+const { mockDb, resetMockDb, setupMockQuery } = require("../setup/testDb");
 
 // Mock the database module
-jest.mock('../../../../config/database', () => ({
+jest.mock("../../../config/database", () => ({
   query: (...args) => mockDb.query(...args),
 }));
 
-describe('ReorderPointEngine - Ticket #4', () => {
+describe("ReorderPointEngine - Ticket #4", () => {
   beforeEach(() => {
     resetMockDb();
   });
 
-  describe('calculateReorderPoint', () => {
-    it('should calculate reorder point with safety stock', async () => {
-      const productId = 'prod-1';
+  describe("calculateReorderPoint", () => {
+    it("should calculate reorder point with safety stock", async () => {
+      const productId = "prod-1";
       const options = {
         serviceLevel: 0.95, // 95% service level
         includeSeasonality: true,
       };
 
       // Mock demand statistics
-      const demandStats = [{
-        avg_daily_demand: 10,
-        demand_std_dev: 2.5,
-        total_days: 90,
-        total_quantity: 900,
-      }];
+      const demandStats = [
+        {
+          avg_daily_demand: 10,
+          demand_std_dev: 2.5,
+          total_days: 90,
+          total_quantity: 900,
+        },
+      ];
 
       // Mock lead time data
-      const leadTimeData = [{
-        avg_lead_time_days: 7,
-        lead_time_std_dev: 1.5,
-        total_orders: 10,
-      }];
+      const leadTimeData = [
+        {
+          avg_lead_time_days: 7,
+          lead_time_std_dev: 1.5,
+          total_orders: 10,
+        },
+      ];
 
       // Mock seasonal factors
-      const seasonalData = [{
-        current_seasonal_factor: 1.2,
-        next_period_factor: 1.3,
-      }];
+      const seasonalData = [
+        {
+          current_seasonal_factor: 1.2,
+          next_period_factor: 1.3,
+        },
+      ];
 
       setupMockQuery([
         demandStats, // Demand statistics
@@ -46,7 +52,10 @@ describe('ReorderPointEngine - Ticket #4', () => {
         seasonalData, // Seasonal factors
       ]);
 
-      const result = await ReorderPointEngine.calculateReorderPoint(productId, options);
+      const result = await ReorderPointEngine.calculateReorderPoint(
+        productId,
+        options
+      );
 
       expect(result.reorderPoint).toBeGreaterThan(0);
       expect(result.safetyStock).toBeGreaterThan(0);
@@ -62,25 +71,29 @@ describe('ReorderPointEngine - Ticket #4', () => {
       expect(result.reorderPoint).toBeGreaterThan(baseReorderPoint);
     });
 
-    it('should handle products with limited sales history', async () => {
-      const productId = 'prod-new';
+    it("should handle products with limited sales history", async () => {
+      const productId = "prod-new";
       const options = {
         serviceLevel: 0.95,
       };
 
       // Mock limited demand data
-      const demandStats = [{
-        avg_daily_demand: 2,
-        demand_std_dev: 0.5,
-        total_days: 15, // Only 15 days of history
-        total_quantity: 30,
-      }];
+      const demandStats = [
+        {
+          avg_daily_demand: 2,
+          demand_std_dev: 0.5,
+          total_days: 15, // Only 15 days of history
+          total_quantity: 30,
+        },
+      ];
 
-      const leadTimeData = [{
-        avg_lead_time_days: 7,
-        lead_time_std_dev: 0,
-        total_orders: 1,
-      }];
+      const leadTimeData = [
+        {
+          avg_lead_time_days: 7,
+          lead_time_std_dev: 0,
+          total_orders: 1,
+        },
+      ];
 
       setupMockQuery([
         demandStats,
@@ -88,46 +101,51 @@ describe('ReorderPointEngine - Ticket #4', () => {
         [], // No seasonal data
       ]);
 
-      const result = await ReorderPointEngine.calculateReorderPoint(productId, options);
+      const result = await ReorderPointEngine.calculateReorderPoint(
+        productId,
+        options
+      );
 
       expect(result.confidence).toBeLessThan(0.8); // Lower confidence due to limited data
-      expect(result.dataQuality).toBe('limited');
-      expect(result.recommendations).toContain('Collect more sales data');
+      expect(result.dataQuality).toBe("limited");
+      expect(result.recommendations).toContain("Collect more sales data");
     });
   });
 
-  describe('calculateEOQ', () => {
-    it('should calculate Economic Order Quantity', async () => {
-      const productId = 'prod-1';
-      const supplierId = 'supplier-1';
+  describe("calculateEOQ", () => {
+    it("should calculate Economic Order Quantity", async () => {
+      const productId = "prod-1";
+      const supplierId = "supplier-1";
 
       // Mock demand data
-      const demandStats = [{
-        annual_demand: 3600, // 300 units per month
-        avg_daily_demand: 10,
-      }];
+      const demandStats = [
+        {
+          annual_demand: 3600, // 300 units per month
+          avg_daily_demand: 10,
+        },
+      ];
 
       // Mock cost data
-      const costData = [{
-        unit_cost: 25.00,
-        ordering_cost: 50.00, // Fixed cost per order
-        carrying_cost_rate: 0.20, // 20% of unit cost
-      }];
+      const costData = [
+        {
+          unit_cost: 25.0,
+          ordering_cost: 50.0, // Fixed cost per order
+          carrying_cost_rate: 0.2, // 20% of unit cost
+        },
+      ];
 
       // Mock supplier constraints
-      const supplierData = [{
-        minimum_order_quantity: 50,
-        bulk_pricing: [
-          { min_quantity: 100, unit_cost: 24.00 },
-          { min_quantity: 500, unit_cost: 22.50 },
-        ],
-      }];
+      const supplierData = [
+        {
+          minimum_order_quantity: 50,
+          bulk_pricing: [
+            { min_quantity: 100, unit_cost: 24.0 },
+            { min_quantity: 500, unit_cost: 22.5 },
+          ],
+        },
+      ];
 
-      setupMockQuery([
-        demandStats,
-        costData,
-        supplierData,
-      ]);
+      setupMockQuery([demandStats, costData, supplierData]);
 
       const result = await ReorderPointEngine.calculateEOQ(
         productId,
@@ -137,8 +155,8 @@ describe('ReorderPointEngine - Ticket #4', () => {
 
       // Classic EOQ = sqrt(2 * D * S / H)
       // Where D = annual demand, S = ordering cost, H = holding cost per unit
-      const holdingCost = 25.00 * 0.20; // $5 per unit per year
-      const classicEOQ = Math.sqrt(2 * 3600 * 50 / holdingCost); // ~268 units
+      const holdingCost = 25.0 * 0.2; // $5 per unit per year
+      const classicEOQ = Math.sqrt((2 * 3600 * 50) / holdingCost); // ~268 units
 
       expect(result.eoq).toBeGreaterThan(0);
       expect(result.eoq).toBeCloseTo(classicEOQ, -1); // Within 10 units
@@ -147,42 +165,47 @@ describe('ReorderPointEngine - Ticket #4', () => {
       expect(result.bulkPricingAnalysis).toBeDefined();
     });
 
-    it('should respect minimum order quantities', async () => {
-      const productId = 'prod-1';
-      const supplierId = 'supplier-1';
+    it("should respect minimum order quantities", async () => {
+      const productId = "prod-1";
+      const supplierId = "supplier-1";
 
-      const demandStats = [{
-        annual_demand: 1200,
-        avg_daily_demand: 3.3,
-      }];
+      const demandStats = [
+        {
+          annual_demand: 1200,
+          avg_daily_demand: 3.3,
+        },
+      ];
 
-      const costData = [{
-        unit_cost: 50.00,
-        ordering_cost: 75.00,
-        carrying_cost_rate: 0.25,
-      }];
+      const costData = [
+        {
+          unit_cost: 50.0,
+          ordering_cost: 75.0,
+          carrying_cost_rate: 0.25,
+        },
+      ];
 
-      const supplierData = [{
-        minimum_order_quantity: 200, // High MOQ
-        bulk_pricing: [],
-      }];
+      const supplierData = [
+        {
+          minimum_order_quantity: 200, // High MOQ
+          bulk_pricing: [],
+        },
+      ];
 
-      setupMockQuery([
-        demandStats,
-        costData,
-        supplierData,
-      ]);
+      setupMockQuery([demandStats, costData, supplierData]);
 
-      const result = await ReorderPointEngine.calculateEOQ(productId, supplierId);
+      const result = await ReorderPointEngine.calculateEOQ(
+        productId,
+        supplierId
+      );
 
       expect(result.eoq).toBeGreaterThanOrEqual(200); // Respects MOQ
-      expect(result.constraintApplied).toBe('minimum_order_quantity');
+      expect(result.constraintApplied).toBe("minimum_order_quantity");
     });
   });
 
-  describe('optimizeReorderPoints', () => {
-    it('should optimize reorder points for multiple products', async () => {
-      const storeId = 'test-store-id';
+  describe("optimizeReorderPoints", () => {
+    it("should optimize reorder points for multiple products", async () => {
+      const storeId = "test-store-id";
       const options = {
         serviceLevel: 0.95,
         includeDisabled: false,
@@ -191,41 +214,49 @@ describe('ReorderPointEngine - Ticket #4', () => {
       // Mock products needing optimization
       const productsData = [
         {
-          product_id: 'prod-1',
-          product_name: 'Product 1',
+          product_id: "prod-1",
+          product_name: "Product 1",
           current_reorder_point: 50,
-          supplier_id: 'supplier-1',
+          supplier_id: "supplier-1",
         },
         {
-          product_id: 'prod-2',
-          product_name: 'Product 2',
+          product_id: "prod-2",
+          product_name: "Product 2",
           current_reorder_point: 30,
-          supplier_id: 'supplier-2',
+          supplier_id: "supplier-2",
         },
       ];
 
       // Mock calculations for each product
-      const prod1Demand = [{
-        avg_daily_demand: 10,
-        demand_std_dev: 2,
-        total_days: 90,
-      }];
+      const prod1Demand = [
+        {
+          avg_daily_demand: 10,
+          demand_std_dev: 2,
+          total_days: 90,
+        },
+      ];
 
-      const prod1LeadTime = [{
-        avg_lead_time_days: 5,
-        lead_time_std_dev: 1,
-      }];
+      const prod1LeadTime = [
+        {
+          avg_lead_time_days: 5,
+          lead_time_std_dev: 1,
+        },
+      ];
 
-      const prod2Demand = [{
-        avg_daily_demand: 5,
-        demand_std_dev: 1,
-        total_days: 90,
-      }];
+      const prod2Demand = [
+        {
+          avg_daily_demand: 5,
+          demand_std_dev: 1,
+          total_days: 90,
+        },
+      ];
 
-      const prod2LeadTime = [{
-        avg_lead_time_days: 7,
-        lead_time_std_dev: 2,
-      }];
+      const prod2LeadTime = [
+        {
+          avg_lead_time_days: 7,
+          lead_time_std_dev: 2,
+        },
+      ];
 
       setupMockQuery([
         productsData, // Get products
@@ -237,18 +268,21 @@ describe('ReorderPointEngine - Ticket #4', () => {
         [], // Product 2 seasonal (empty)
       ]);
 
-      const result = await ReorderPointEngine.optimizeReorderPoints(storeId, options);
+      const result = await ReorderPointEngine.optimizeReorderPoints(
+        storeId,
+        options
+      );
 
       expect(result.productsOptimized).toBe(2);
       expect(result.recommendations).toHaveLength(2);
-      expect(result.recommendations[0].productId).toBe('prod-1');
+      expect(result.recommendations[0].productId).toBe("prod-1");
       expect(result.recommendations[0].newReorderPoint).toBeGreaterThan(0);
       expect(result.totalSavingsEstimate).toBeDefined();
     });
   });
 
-  describe('calculateSafetyStock', () => {
-    it('should calculate safety stock for given service level', async () => {
+  describe("calculateSafetyStock", () => {
+    it("should calculate safety stock for given service level", async () => {
       const demandStats = {
         avgDailyDemand: 10,
         demandStdDev: 2.5,
@@ -267,14 +301,14 @@ describe('ReorderPointEngine - Ticket #4', () => {
 
       // Safety stock formula: z * sqrt(LT * σ_d² + d² * σ_LT²)
       // Where z = service level z-score, LT = lead time, d = demand
-      const expectedSafetyStock = 1.645 * Math.sqrt(
-        7 * Math.pow(2.5, 2) + Math.pow(10, 2) * Math.pow(1.5, 2)
-      );
+      const expectedSafetyStock =
+        1.645 *
+        Math.sqrt(7 * Math.pow(2.5, 2) + Math.pow(10, 2) * Math.pow(1.5, 2));
 
       expect(safetyStock).toBeCloseTo(expectedSafetyStock, 1);
     });
 
-    it('should handle zero variability', async () => {
+    it("should handle zero variability", async () => {
       const demandStats = {
         avgDailyDemand: 10,
         demandStdDev: 0, // No demand variability
@@ -295,9 +329,9 @@ describe('ReorderPointEngine - Ticket #4', () => {
     });
   });
 
-  describe('analyzeSeasonality', () => {
-    it('should detect seasonal patterns', async () => {
-      const productId = 'prod-1';
+  describe("analyzeSeasonality", () => {
+    it("should detect seasonal patterns", async () => {
+      const productId = "prod-1";
 
       // Mock seasonal sales data
       const seasonalData = [
