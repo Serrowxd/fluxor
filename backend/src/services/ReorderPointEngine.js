@@ -8,6 +8,9 @@ const db = require("../../config/database");
  * Uses statistical analysis and demand forecasting for optimization.
  */
 class ReorderPointEngine {
+  constructor() {
+    // Initialize any required state
+  }
   /**
    * Calculate optimal reorder point for a product
    * @param {string} productId - Product ID
@@ -698,6 +701,107 @@ class ReorderPointEngine {
     const carryingCostTotal = (orderQuantity / 2) * carryingCost;
     return orderingCostTotal + carryingCostTotal;
   }
+
+  /**
+   * Analyze seasonality patterns for a product
+   * @param {string} productId - Product ID
+   * @returns {Promise<Object>} Seasonality analysis
+   */
+  async analyzeSeasonality(productId) {
+    try {
+      const result = await db.query(
+        `
+        WITH monthly_sales AS (
+          SELECT 
+            EXTRACT(MONTH FROM sale_date) as month,
+            EXTRACT(YEAR FROM sale_date) as year,
+            SUM(quantity_sold) as monthly_quantity
+          FROM sales 
+          WHERE product_id = $1 
+          AND sale_date >= CURRENT_DATE - INTERVAL '2 years'
+          GROUP BY EXTRACT(MONTH FROM sale_date), EXTRACT(YEAR FROM sale_date)
+        ),
+        monthly_averages AS (
+          SELECT 
+            month,
+            AVG(monthly_quantity) as avg_monthly_quantity,
+            COUNT(*) as data_points
+          FROM monthly_sales
+          GROUP BY month
+        ),
+        overall_average AS (
+          SELECT AVG(avg_monthly_quantity) as overall_avg
+          FROM monthly_averages
+        )
+        SELECT 
+          ma.month,
+          ma.avg_monthly_quantity,
+          ma.data_points,
+          (ma.avg_monthly_quantity / oa.overall_avg) as seasonal_index,
+          oa.overall_avg
+        FROM monthly_averages ma
+        CROSS JOIN overall_average oa
+        ORDER BY ma.month
+      `,
+        [productId]
+      );
+
+      const monthlyData = result.rows;
+      
+      if (monthlyData.length === 0) {
+        return {
+          hasSeasonality: false,
+          peakMonth: null,
+          lowMonth: null,
+          seasonalVariation: 0,
+          monthlyIndexes: [],
+          confidence: 0
+        };
+      }
+
+      // Find peak and low months
+      const peakMonth = monthlyData.reduce((prev, current) => 
+        (prev.seasonal_index > current.seasonal_index) ? prev : current
+      ).month;
+      
+      const lowMonth = monthlyData.reduce((prev, current) => 
+        (prev.seasonal_index < current.seasonal_index) ? prev : current
+      ).month;
+
+      // Calculate seasonal variation (coefficient of variation of seasonal indexes)
+      const indexes = monthlyData.map(m => parseFloat(m.seasonal_index));
+      const avgIndex = indexes.reduce((sum, idx) => sum + idx, 0) / indexes.length;
+      const variance = indexes.reduce((sum, idx) => sum + Math.pow(idx - avgIndex, 2), 0) / indexes.length;
+      const seasonalVariation = Math.sqrt(variance) / avgIndex;
+
+      // Determine if seasonality is significant (CV > 0.2 indicates seasonality)
+      const hasSeasonality = seasonalVariation > 0.2;
+
+      // Calculate confidence based on data availability
+      const avgDataPoints = monthlyData.reduce((sum, m) => sum + parseInt(m.data_points), 0) / monthlyData.length;
+      const confidence = Math.min(avgDataPoints / 12, 1.0); // Max confidence with 12+ data points per month
+
+      return {
+        hasSeasonality,
+        peakMonth: parseInt(peakMonth),
+        lowMonth: parseInt(lowMonth),
+        seasonalVariation,
+        monthlyIndexes: monthlyData.map(m => ({
+          month: parseInt(m.month),
+          index: parseFloat(m.seasonal_index),
+          avgQuantity: parseFloat(m.avg_monthly_quantity),
+          dataPoints: parseInt(m.data_points)
+        })),
+        confidence
+      };
+    } catch (error) {
+      throw new Error(`Failed to analyze seasonality: ${error.message}`);
+    }
+  }
 }
 
+// Export both class and instance for different usage patterns
+const reorderPointEngineInstance = new ReorderPointEngine();
+
 module.exports = ReorderPointEngine;
+module.exports.instance = reorderPointEngineInstance;

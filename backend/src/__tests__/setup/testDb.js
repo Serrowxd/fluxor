@@ -24,8 +24,14 @@ const testPool = new Pool({
 });
 
 // Mock database for unit tests
+const mockClient = {
+  query: jest.fn(),
+  release: jest.fn(),
+};
+
 const mockDb = {
   query: jest.fn(),
+  getClient: jest.fn().mockResolvedValue(mockClient),
   connect: jest.fn(),
   end: jest.fn(),
 };
@@ -33,20 +39,28 @@ const mockDb = {
 // Helper to reset mock database
 const resetMockDb = () => {
   mockDb.query.mockReset();
+  mockDb.getClient.mockReset();
   mockDb.connect.mockReset();
   mockDb.end.mockReset();
+  mockClient.query.mockReset();
+  mockClient.release.mockReset();
+  
+  // Re-setup the mock client return
+  mockDb.getClient.mockResolvedValue(mockClient);
 };
 
 // Helper to setup mock query responses
 const setupMockQuery = (responses) => {
   responses.forEach((response, index) => {
     mockDb.query.mockResolvedValueOnce({ rows: response });
+    mockClient.query.mockResolvedValueOnce({ rows: response });
   });
 };
 
 module.exports = {
   testPool,
   mockDb,
+  mockClient,
   resetMockDb,
   setupMockQuery,
 };

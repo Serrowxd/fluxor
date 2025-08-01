@@ -459,6 +459,37 @@ class Analytics {
     console.log(`Cleared ${result.rows.length} expired cache entries`);
     return result.rows.length;
   }
+
+  // Aliases for backward compatibility with tests
+  static async getInventoryTurnover(storeId, period, productId) {
+    return this.calculateInventoryTurnover(storeId, period, productId);
+  }
+
+  static async getStockoutRate(storeId, period) {
+    return this.calculateStockoutRate(storeId, period);
+  }
+
+  static async getCarryingCosts(storeId, productId) {
+    return this.calculateCarryingCosts(storeId, productId);
+  }
+
+  static async getGrossMargins(storeId, period, productId) {
+    return this.calculateGrossMargins(storeId, period, productId);
+  }
+
+  static async getStockLevels(storeId, period) {
+    return this.getStockLevelAnalytics(storeId, period);
+  }
+
+  static async cacheMetric(storeId, metricType, data, ttlMinutes) {
+    const cacheKey = `${metricType}_${storeId}`;
+    return this.cacheAnalytics(cacheKey, data, ttlMinutes);
+  }
+
+  static async getFromCache(storeId, metricType) {
+    const cacheKey = `${metricType}_${storeId}`;
+    return this.getCachedAnalytics(cacheKey);
+  }
 }
 
 module.exports = Analytics;

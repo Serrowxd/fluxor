@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const Analytics = require("../models/Analytics");
-const auth = require("../middleware/auth");
+const { authenticateToken } = require("../middleware/auth");
 
 // Middleware to ensure user is authenticated
-router.use(auth);
+router.use(authenticateToken);
 
 // Get comprehensive dashboard analytics
 router.get("/dashboard/:storeId", async (req, res) => {

@@ -327,6 +327,11 @@ class ForecastAccuracy {
 
     return result.rows;
   }
+
+  // Method aliases for test compatibility
+  static async recordAccuracy(data) {
+    return this.create(data);
+  }
 }
 
 module.exports = ForecastAccuracy;

@@ -4,7 +4,13 @@
     "allow": [
       "Bash(dir:*)",
       "Bash(powershell:*)",
-      "Bash(rmdir:*)"
+      "Bash(rmdir:*)",
+      "Bash(npm test)",
+      "Bash(npm ls:*)",
+      "Bash(rm:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)"
     ],
     "deny": []
   }

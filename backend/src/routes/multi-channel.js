@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const MultiChannelService = require("../services/MultiChannelService");
 const MultiChannelSyncJob = require("../jobs/MultiChannelSyncJob");
-const auth = require("../middleware/auth");
+const { authenticateToken } = require("../middleware/auth");
 const validation = require("../middleware/validation");
 const { body, param, query } = require("express-validator");
 
@@ -21,7 +21,7 @@ multiChannelService.initialize().catch(console.error);
  * @desc Get all active channels for a store
  * @access Private
  */
-router.get("/channels", auth, async (req, res) => {
+router.get("/channels", authenticateToken, async (req, res) => {
   try {
     const { storeId } = req.user; // Assuming user object has storeId
     const channels = await multiChannelService.getActiveChannels(storeId);
@@ -46,7 +46,7 @@ router.get("/channels", auth, async (req, res) => {
  */
 router.post(
   "/channels/connect",
-  auth,
+  authenticateToken,
   [
     body("channelType")
       .isIn(["shopify", "amazon", "ebay", "square", "custom"])
@@ -86,7 +86,7 @@ router.post(
  */
 router.delete(
   "/channels/:channelId",
-  auth,
+  authenticateToken,
   [param("channelId").isUUID().withMessage("Invalid channel ID")],
   validation,
   async (req, res) => {
@@ -120,7 +120,7 @@ router.delete(
  */
 router.post(
   "/sync/all",
-  auth,
+  authenticateToken,
   [body("options").optional().isObject()],
   validation,
   async (req, res) => {
@@ -164,7 +164,7 @@ router.post(
  */
 router.post(
   "/sync/channel/:channelId",
-  auth,
+  authenticateToken,
   [
     param("channelId").isUUID().withMessage("Invalid channel ID"),
     body("options").optional().isObject(),
@@ -209,7 +209,7 @@ router.post(
  * @desc Get sync status for all channels
  * @access Private
  */
-router.get("/sync/status", auth, async (req, res) => {
+router.get("/sync/status", authenticateToken, async (req, res) => {
   try {
     const { storeId } = req.user;
     const syncStatus = await multiChannelService.getSyncStatus(storeId);
@@ -232,7 +232,7 @@ router.get("/sync/status", auth, async (req, res) => {
  * @desc Get pending conflicts
  * @access Private
  */
-router.get("/conflicts", auth, async (req, res) => {
+router.get("/conflicts", authenticateToken, async (req, res) => {
   try {
     const { storeId } = req.user;
     const conflicts = await multiChannelService.getPendingConflicts(storeId);
@@ -257,7 +257,7 @@ router.get("/conflicts", auth, async (req, res) => {
  */
 router.post(
   "/conflicts/:conflictId/resolve",
-  auth,
+  authenticateToken,
   [
     param("conflictId").isUUID().withMessage("Invalid conflict ID"),
     body("strategy")
@@ -312,7 +312,7 @@ router.post(
  */
 router.post(
   "/inventory/allocate/:productId",
-  auth,
+  authenticateToken,
   [
     param("productId").isUUID().withMessage("Invalid product ID"),
     body("strategy")
@@ -370,7 +370,7 @@ router.post(
  */
 router.get(
   "/inventory/allocation/:productId",
-  auth,
+  authenticateToken,
   [param("productId").isUUID().withMessage("Invalid product ID")],
   validation,
   async (req, res) => {
@@ -402,7 +402,7 @@ router.get(
  */
 router.post(
   "/inventory/reserve",
-  auth,
+  authenticateToken,
   [
     body("productId").isUUID().withMessage("Invalid product ID"),
     body("channelId").isUUID().withMessage("Invalid channel ID"),
@@ -446,7 +446,7 @@ router.post(
  */
 router.post(
   "/inventory/release",
-  auth,
+  authenticateToken,
   [
     body("productId").isUUID().withMessage("Invalid product ID"),
     body("channelId").isUUID().withMessage("Invalid channel ID"),
@@ -538,7 +538,7 @@ router.post(
  * @desc Get queue statistics
  * @access Private
  */
-router.get("/queue/stats", auth, async (req, res) => {
+router.get("/queue/stats", authenticateToken, async (req, res) => {
   try {
     const stats = await MultiChannelSyncJob.getQueueStats();
 
@@ -560,7 +560,7 @@ router.get("/queue/stats", auth, async (req, res) => {
  * @desc Health check for multi-channel system
  * @access Private
  */
-router.get("/health", auth, async (req, res) => {
+router.get("/health", authenticateToken, async (req, res) => {
   try {
     const { storeId } = req.user;
     const channels = await multiChannelService.getActiveChannels(storeId);

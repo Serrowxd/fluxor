@@ -3,6 +3,7 @@ const Sale = require("../models/Sale");
 const Product = require("../models/Product");
 const Store = require("../models/Store");
 const ForecastAccuracy = require("../models/ForecastAccuracy");
+const db = require("../../config/database");
 
 class DeadStockDetectionService {
   /**
@@ -65,7 +66,7 @@ class DeadStockDetectionService {
       const detectionConfig = { ...defaultConfig, ...config };
 
       // Get products with sales history and inventory data
-      const products = await this.getProductsWithHistoricalData(storeId);
+      const products = await DeadStockDetectionService.getProductsWithHistoricalData(storeId);
 
       const analysisResults = [];
 
@@ -647,7 +648,7 @@ class DeadStockDetectionService {
     `;
 
     try {
-      const result = await Product.query(query, [storeId]);
+      const result = await db.query(query, [storeId]);
       return result.rows;
     } catch (error) {
       console.error("Error getting products with historical data:", error);
@@ -667,6 +668,174 @@ class DeadStockDetectionService {
       squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;
 
     return Math.sqrt(avgSquaredDiff);
+  }
+
+  /**
+   * Calculate velocity score for a product
+   */
+  static async calculateVelocity(productId, windowDays = 30) {
+    try {
+      const result = await db.query(
+        `
+        SELECT 
+          COALESCE(SUM(quantity_sold), 0) as total_quantity,
+          COUNT(DISTINCT DATE(sale_date)) as active_days,
+          AVG(quantity_sold) as avg_daily_sales
+        FROM sales 
+        WHERE product_id = $1 
+        AND sale_date >= CURRENT_DATE - INTERVAL '${windowDays} days'
+      `,
+        [productId]
+      );
+
+      const stats = result.rows[0];
+      const velocity = parseFloat(stats.total_quantity) / windowDays;
+
+      return {
+        velocity,
+        totalQuantity: parseInt(stats.total_quantity) || 0,
+        activeDays: parseInt(stats.active_days) || 0,
+        avgDailySales: parseFloat(stats.avg_daily_sales) || 0,
+        windowDays
+      };
+    } catch (error) {
+      throw new Error(`Failed to calculate velocity: ${error.message}`);
+    }
+  }
+
+  /**
+   * Analyze dead stock trends over time
+   */
+  static async analyzeDeadStockTrends(storeId, period = "12 months") {
+    try {
+      const result = await db.query(
+        `
+        WITH monthly_dead_stock AS (
+          SELECT 
+            DATE_TRUNC('month', created_at) as month,
+            COUNT(*) as dead_stock_count,
+            SUM(inventory_value) as dead_stock_value
+          FROM dead_stock_analysis
+          WHERE store_id = $1
+          AND created_at >= CURRENT_DATE - INTERVAL '${period}'
+          AND risk_level IN ('dead_stock', 'obsolete')
+          GROUP BY DATE_TRUNC('month', created_at)
+          ORDER BY month
+        )
+        SELECT 
+          month,
+          dead_stock_count,
+          dead_stock_value,
+          LAG(dead_stock_count) OVER (ORDER BY month) as prev_count,
+          LAG(dead_stock_value) OVER (ORDER BY month) as prev_value
+        FROM monthly_dead_stock
+      `,
+        [storeId]
+      );
+
+      return result.rows.map(row => ({
+        month: row.month,
+        deadStockCount: parseInt(row.dead_stock_count),
+        deadStockValue: parseFloat(row.dead_stock_value),
+        countTrend: row.prev_count 
+          ? (parseInt(row.dead_stock_count) - parseInt(row.prev_count)) / parseInt(row.prev_count) * 100
+          : 0,
+        valueTrend: row.prev_value
+          ? (parseFloat(row.dead_stock_value) - parseFloat(row.prev_value)) / parseFloat(row.prev_value) * 100
+          : 0
+      }));
+    } catch (error) {
+      throw new Error(`Failed to analyze dead stock trends: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get liquidation candidates based on urgency
+   */
+  static async getLiquidationCandidates(storeId, urgencyThreshold = 0.8) {
+    try {
+      const result = await db.query(
+        `
+        SELECT 
+          p.product_id,
+          p.product_name,
+          p.sku,
+          i.current_stock,
+          p.unit_cost,
+          i.current_stock * p.unit_cost as inventory_value,
+          dsa.risk_score,
+          dsa.days_without_sales,
+          dsa.velocity_score,
+          dsa.recommendation
+        FROM dead_stock_analysis dsa
+        JOIN products p ON dsa.product_id = p.product_id
+        JOIN inventory i ON p.product_id = i.product_id
+        WHERE dsa.store_id = $1
+        AND dsa.risk_score >= $2
+        AND dsa.risk_level IN ('dead_stock', 'obsolete')
+        ORDER BY dsa.risk_score DESC, inventory_value DESC
+      `,
+        [storeId, urgencyThreshold]
+      );
+
+      return result.rows.map(row => ({
+        productId: row.product_id,
+        productName: row.product_name,
+        sku: row.sku,
+        currentStock: parseInt(row.current_stock),
+        unitCost: parseFloat(row.unit_cost),
+        inventoryValue: parseFloat(row.inventory_value),
+        riskScore: parseFloat(row.risk_score),
+        daysWithoutSales: parseInt(row.days_without_sales),
+        velocityScore: parseFloat(row.velocity_score),
+        recommendation: row.recommendation
+      }));
+    } catch (error) {
+      throw new Error(`Failed to get liquidation candidates: ${error.message}`);
+    }
+  }
+
+  /**
+   * Calculate financial impact of liquidation
+   */
+  static async calculateLiquidationImpact(storeId) {
+    try {
+      const result = await db.query(
+        `
+        SELECT 
+          COUNT(*) as total_products,
+          SUM(i.current_stock * p.unit_cost) as total_inventory_value,
+          SUM(CASE WHEN dsa.risk_level = 'dead_stock' THEN i.current_stock * p.unit_cost ELSE 0 END) as dead_stock_value,
+          SUM(CASE WHEN dsa.risk_level = 'obsolete' THEN i.current_stock * p.unit_cost ELSE 0 END) as obsolete_value,
+          AVG(dsa.risk_score) as avg_risk_score
+        FROM dead_stock_analysis dsa
+        JOIN products p ON dsa.product_id = p.product_id
+        JOIN inventory i ON p.product_id = i.product_id
+        WHERE dsa.store_id = $1
+        AND dsa.risk_level IN ('dead_stock', 'obsolete')
+      `,
+        [storeId]
+      );
+
+      const stats = result.rows[0];
+      const totalValue = parseFloat(stats.total_inventory_value) || 0;
+      const deadStockValue = parseFloat(stats.dead_stock_value) || 0;
+      const obsoleteValue = parseFloat(stats.obsolete_value) || 0;
+
+      return {
+        totalProducts: parseInt(stats.total_products) || 0,
+        totalInventoryValue: totalValue,
+        deadStockValue,
+        obsoleteValue,
+        liquidationValue: deadStockValue + obsoleteValue,
+        percentageOfInventory: totalValue > 0 ? ((deadStockValue + obsoleteValue) / totalValue) * 100 : 0,
+        avgRiskScore: parseFloat(stats.avg_risk_score) || 0,
+        estimatedLoss: (deadStockValue + obsoleteValue) * 0.7, // Assume 30% recovery rate
+        potentialSavings: (deadStockValue + obsoleteValue) * 0.15 // Storage cost savings
+      };
+    } catch (error) {
+      throw new Error(`Failed to calculate liquidation impact: ${error.message}`);
+    }
   }
 }
 

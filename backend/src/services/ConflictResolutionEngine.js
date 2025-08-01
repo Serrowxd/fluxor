@@ -706,6 +706,20 @@ class ConflictResolutionEngine {
 
     return scores;
   }
+
+  // Method aliases for test compatibility
+  async detectConflicts(productId) {
+    return this.detectProductConflicts(productId);
+  }
+
+  async resolveConflicts(conflicts, strategy, options = {}) {
+    const results = [];
+    for (const conflict of conflicts) {
+      const result = await this.resolveConflict(conflict, strategy, options);
+      results.push(result);
+    }
+    return results;
+  }
 }
 
 module.exports = ConflictResolutionEngine;
