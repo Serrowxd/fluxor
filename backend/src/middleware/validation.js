@@ -38,9 +38,23 @@ const schemas = {
   testAlert: Joi.object({
     product_id: Joi.string().uuid().required(),
   }),
+
+  // Shopify schemas
+  shopifyAuth: Joi.object({
+    shop: Joi.string()
+      .pattern(/^[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Shop must be a valid Shopify domain ending with .myshopify.com'
+      }),
+  }),
 };
+
+// Shopify-specific validation middleware
+const validateShopifyAuth = validate(schemas.shopifyAuth);
 
 module.exports = {
   validate,
   schemas,
+  validateShopifyAuth,
 };

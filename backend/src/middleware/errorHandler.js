@@ -2,13 +2,21 @@ const errorHandler = (err, req, res, next) => {
   console.error(err.stack);
 
   // Default error
-  let status = err.status || 500;
+  let status = err.status || err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
+  let code = err.code || 'INTERNAL_ERROR';
+
+  // Shopify errors
+  if (err.name === 'ShopifyError') {
+    status = err.statusCode;
+    code = err.code;
+  }
 
   // Validation errors
   if (err.name === 'ValidationError') {
     status = 400;
     message = 'Validation Error';
+    code = 'VALIDATION_ERROR';
   }
 
   // JWT errors
@@ -37,6 +45,8 @@ const errorHandler = (err, req, res, next) => {
     error: {
       message,
       status,
+      code,
+      ...(err.details && { details: err.details }),
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     },
   });

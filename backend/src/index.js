@@ -21,6 +21,7 @@ const settingsRoutes = require("./routes/settings");
 const analyticsRoutes = require("./routes/analytics");
 const multiChannelRoutes = require("./routes/multi-channel");
 const healthRoutes = require("./routes/health");
+const integrationsRoutes = require("./routes/integrations");
 
 // Supplier and Purchase Order routes (Ticket #4)
 const supplierRoutes = require("./routes/suppliers");
@@ -103,6 +104,9 @@ app.use("/api/approval-workflows", approvalWorkflowRoutes);
 
 // Chat API routes
 app.use("/api/v1/chat", chatRoutes);
+
+// Integrations routes (v1 API)
+app.use("/api/v1/integrations", integrationsRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

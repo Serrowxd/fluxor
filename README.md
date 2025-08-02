@@ -324,11 +324,13 @@ The project is currently undergoing a modular refactor to transition from monoli
 This section provides essential information for AI agents and LLMs working on the Fluxor project.
 
 #### Project Type
+
 - **Category**: Enterprise SaaS Inventory Management System
 - **Target**: Small to medium enterprises (SMEs) using e-commerce platforms
 - **Core Value**: AI-powered demand forecasting with multi-channel inventory sync
 
 #### Tech Stack Summary
+
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend**: Node.js, Express.js, PostgreSQL, Redis, Bull queue
 - **AI Service**: Python Flask with Facebook Prophet
@@ -336,6 +338,7 @@ This section provides essential information for AI agents and LLMs working on th
 - **Deployment**: Vercel (frontend), AWS/Heroku (backend/AI)
 
 #### Key Files for Context
+
 - **CLAUDE.md**: Essential commands and project-specific instructions
 - **specs/design.md**: Complete system architecture and implementation status
 - **backend/src/models/**: Database schema and model implementations
@@ -343,12 +346,14 @@ This section provides essential information for AI agents and LLMs working on th
 - **components/ui/**: Reusable UI components (40+ shadcn/ui components)
 
 #### Current State
+
 - **Branch**: modular-refactor (transitioning to microservices)
 - **Core Features**: Working (auth, dashboard, forecasting, multi-channel base)
 - **Integrations**: Shopify OAuth and webhooks need completion
 - **Test Coverage**: 95%+ backend, frontend tests needed
 
 #### Development Commands
+
 ```bash
 # Essential commands (see CLAUDE.md for full list)
 npm run dev                      # Start frontend
@@ -359,13 +364,15 @@ cd backend && npm test           # Run tests
 ```
 
 #### Architecture Patterns
-- **API Design**: RESTful with JWT auth on all endpoints except /auth/*
+
+- **API Design**: RESTful with JWT auth on all endpoints except /auth/\*
 - **Database**: Raw SQL with parameterized queries (no ORM)
 - **State Management**: Server state via API, client state with React hooks
 - **Error Handling**: Standardized error responses with status codes
 - **Security**: Input validation, rate limiting, encrypted tokens
 
 #### Key Implementation Notes
+
 - Always check existing components before creating new ones
 - Follow existing code patterns and conventions
 - Use absolute imports and paths
