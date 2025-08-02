@@ -1,26 +1,31 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { SalesChart } from "@/components/dashboard/sales-chart";
-import { InventoryChart } from "@/components/dashboard/inventory-chart";
-import { ReorderSuggestions } from "@/components/dashboard/reorder-suggestions";
+import { SalesChartWithChat } from "@/components/dashboard/sales-chart-with-chat";
+import { InventoryChartWithChat } from "@/components/dashboard/inventory-chart-with-chat";
+import { ReorderSuggestionsWithChat } from "@/components/dashboard/reorder-suggestions-with-chat";
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs";
-import { AlertBanner, AlertItem } from "@/components/dashboard/alert-banner";
+import { AlertBannerWithChat, AlertItem } from "@/components/dashboard/alert-banner-with-chat";
 import { SyncStatus } from "@/components/dashboard/sync-status";
 import { AnalyticsOverview } from "@/components/dashboard/analytics-overview";
 import { TurnoverChart } from "@/components/dashboard/turnover-chart";
 import { MarginAnalysisChart } from "@/components/dashboard/margin-analysis-chart";
 import { StockoutTracker } from "@/components/dashboard/stockout-tracker";
+import { ChatQuickActions } from "@/components/dashboard/chat-quick-actions";
+import { ChatTrigger } from "@/components/chat/ChatTrigger";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Store, Download, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { useChat } from "@/hooks/useChat";
 
-export default function Content() {
+export default function ContentWithChat() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isOpen, setIsOpen } = useChat();
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState([]);
   const [inventoryData, setInventoryData] = useState([]);
@@ -38,6 +43,51 @@ export default function Content() {
   const isDevUser = user?.user_id === "dev-user-123";
   const isDemoUser = user?.user_id === "demo-user-456";
   const isDemoOrDevUser = isDevUser || isDemoUser;
+
+  useEffect(() => {
+    if (isDemoOrDevUser) {
+      // Load dummy data for development or demo
+      loadDummyData();
+    } else {
+      // Load real data from API
+      fetchDashboardData();
+    }
+  }, [isDemoOrDevUser, fetchDashboardData, loadDummyData]);
+
+  // Generate alerts based on inventory data
+  useEffect(() => {
+    const newAlerts: AlertItem[] = [];
+
+    // Check for low stock items
+    const lowStockItems = suggestions.filter((s) => s.urgency === "high");
+    if (lowStockItems.length > 0) {
+      newAlerts.push({
+        id: "low-stock",
+        type: "reorder",
+        message: `${lowStockItems.length} products need immediate reordering`,
+        link: "#",
+        linkText: "View Reorder Suggestions",
+        priority: "high",
+        data: { lowStockItems, count: lowStockItems.length }
+      });
+    }
+
+    // Check for medium urgency items
+    const mediumUrgencyItems = suggestions.filter(
+      (s) => s.urgency === "medium"
+    );
+    if (mediumUrgencyItems.length > 0) {
+      newAlerts.push({
+        id: "medium-stock",
+        type: "stock",
+        message: `${mediumUrgencyItems.length} products will need reordering soon`,
+        priority: "medium",
+        data: { mediumUrgencyItems, count: mediumUrgencyItems.length }
+      });
+    }
+
+    setAlerts(newAlerts);
+  }, [suggestions]);
 
   const loadDummyData = useCallback(() => {
     // Set dummy data for development
@@ -299,49 +349,6 @@ export default function Content() {
     }
   }, [toast, loadDummyData]);
 
-  useEffect(() => {
-    if (isDemoOrDevUser) {
-      // Load dummy data for development or demo
-      loadDummyData();
-    } else {
-      // Load real data from API
-      fetchDashboardData();
-    }
-  }, [isDemoOrDevUser, fetchDashboardData, loadDummyData]);
-
-  // Generate alerts based on inventory data
-  useEffect(() => {
-    const newAlerts: AlertItem[] = [];
-
-    // Check for low stock items
-    const lowStockItems = suggestions.filter((s) => s.urgency === "high");
-    if (lowStockItems.length > 0) {
-      newAlerts.push({
-        id: "low-stock",
-        type: "reorder",
-        message: `${lowStockItems.length} products need immediate reordering`,
-        link: "#",
-        linkText: "View Reorder Suggestions",
-        priority: "high",
-      });
-    }
-
-    // Check for medium urgency items
-    const mediumUrgencyItems = suggestions.filter(
-      (s) => s.urgency === "medium"
-    );
-    if (mediumUrgencyItems.length > 0) {
-      newAlerts.push({
-        id: "medium-stock",
-        type: "stock",
-        message: `${mediumUrgencyItems.length} products will need reordering soon`,
-        priority: "medium",
-      });
-    }
-
-    setAlerts(newAlerts);
-  }, [suggestions]);
-
   const handleSync = async () => {
     setSyncing(true);
     setSyncProgress(0);
@@ -463,14 +470,21 @@ export default function Content() {
               />
             )}
 
-            {/* Original Charts */}
+            {/* Quick AI Actions */}
+            <ChatQuickActions 
+              suggestions={suggestions}
+              salesData={salesData}
+              inventoryData={inventoryData}
+            />
+
+            {/* Original Charts with Chat Integration */}
             <div className="grid gap-6 md:grid-cols-2">
-              <SalesChart data={salesData} />
-              <InventoryChart data={inventoryData} />
+              <SalesChartWithChat data={salesData} />
+              <InventoryChartWithChat data={inventoryData} />
             </div>
 
-            {/* Compact Reorder Suggestions */}
-            <ReorderSuggestions
+            {/* Compact Reorder Suggestions with Chat */}
+            <ReorderSuggestionsWithChat
               suggestions={suggestions.slice(0, 3)}
               onReorder={handleReorder}
               compact={true}
@@ -554,7 +568,7 @@ export default function Content() {
       case "reorder":
         return (
           <div className="space-y-6">
-            <ReorderSuggestions
+            <ReorderSuggestionsWithChat
               suggestions={suggestions}
               onReorder={handleReorder}
               showBulkActions={true}
@@ -603,10 +617,10 @@ export default function Content() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Alert Banner */}
+    <div className={cn("space-y-6", isOpen && "lg:mr-[400px] transition-all duration-300")}>
+      {/* Alert Banner with Chat Integration */}
       {alerts.length > 0 && (
-        <AlertBanner alerts={alerts} onDismiss={handleAlertDismiss} />
+        <AlertBannerWithChat alerts={alerts} onDismiss={handleAlertDismiss} />
       )}
 
       {/* Header with Sync Status */}
@@ -637,6 +651,10 @@ export default function Content() {
 
       {/* Tab Content */}
       <div className="mt-6">{renderTabContent()}</div>
+
+      {/* Chat Interface */}
+      <ChatTrigger onClick={() => setIsOpen(true)} />
+      <ChatPanel isOpen={isOpen} onOpenChange={setIsOpen} />
     </div>
   );
 }

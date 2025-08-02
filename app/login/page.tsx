@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +44,11 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDevLoading, setIsDevLoading] = useState(false);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
+
+  // Log when component mounts
+  useEffect(() => {
+    console.log("Login page mounted");
+  }, []);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -121,20 +126,35 @@ export default function LoginPage() {
           "Logged in with demo account. You can explore the application with sample data.",
       });
 
+      // Small delay before navigation to ensure state updates
+      await new Promise(resolve => setTimeout(resolve, 200));
       router.push("/dashboard");
     } catch (error) {
+      console.error("Demo login error:", error);
       toast({
         title: "Error",
         description: "Failed to login with demo account",
         variant: "destructive",
       });
-    } finally {
       setIsDemoLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <>
+      {(isLoading || isDemoLoading || isDevLoading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">
+              {isDemoLoading ? "Setting up demo environment..." : 
+               isDevLoading ? "Loading development account..." : 
+               "Logging you in..."}
+            </p>
+          </div>
+        </div>
+      )}
+      <div className="flex min-h-screen items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Login</CardTitle>
@@ -247,7 +267,7 @@ export default function LoginPage() {
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-primary hover:underline">
               Sign up
             </Link>
@@ -255,5 +275,6 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+    </>
   );
 }

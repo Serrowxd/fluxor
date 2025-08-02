@@ -10,7 +10,21 @@
       "Bash(rm:*)",
       "Bash(npm install)",
       "Bash(npm install:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(npx jest:*)",
+      "Bash(node:*)",
+      "Bash(npm run lint)",
+      "Bash(ls:*)",
+      "Bash(npm run migrate:*)",
+      "Bash(npm run:*)",
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm test:*)",
+      "Bash(jest:*)",
+      "Bash(pnpm exec jest:*)",
+      "Bash(pnpm install:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": []
   }

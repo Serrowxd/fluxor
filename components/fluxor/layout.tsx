@@ -5,6 +5,11 @@ import Sidebar from "./sidebar"
 import TopNav from "./top-nav"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
+import { ChatTrigger } from "@/components/chat/ChatTrigger"
+import { ChatPanel } from "@/components/chat/ChatPanel"
+import { ChatInput } from "@/components/chat/ChatInput"
+import { ConversationView } from "@/components/chat/ConversationView"
+import { useChat } from "@/hooks/useChat"
 
 interface LayoutProps {
   children: ReactNode
@@ -13,6 +18,8 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const { messages, sendMessage, isSending } = useChat()
 
   useEffect(() => {
     setMounted(true)
@@ -35,6 +42,26 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </main>
       </div>
+      
+      {/* Chat Components */}
+      <ChatTrigger onClick={() => setIsChatOpen(true)} />
+      <ChatPanel 
+        isOpen={isChatOpen} 
+        onOpenChange={setIsChatOpen}
+        inputComponent={
+          <ChatInput 
+            onSendMessage={sendMessage}
+            disabled={isSending}
+            placeholder="Ask about inventory, sales, or trends..."
+          />
+        }
+      >
+        <ConversationView 
+          messages={messages}
+          isTyping={isSending}
+          className="h-full"
+        />
+      </ChatPanel>
     </div>
   )
 }

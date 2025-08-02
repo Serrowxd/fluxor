@@ -150,6 +150,53 @@ class Sale {
     
     return result.rows[0];
   }
+
+  /**
+   * Get historical sales data grouped by month for seasonal pattern analysis
+   */
+  static async getHistoricalSalesByMonth(storeId) {
+    const query = `
+      SELECT 
+        EXTRACT(MONTH FROM s.sale_date) as month,
+        TO_CHAR(s.sale_date, 'Month') as month_name,
+        AVG(s.quantity_sold) as avg_daily_sales,
+        SUM(s.quantity_sold * COALESCE(p.selling_price, p.unit_cost * 1.5)) as total_revenue,
+        COUNT(DISTINCT DATE(s.sale_date)) as days_with_sales,
+        COUNT(DISTINCT s.product_id) as unique_products_sold
+      FROM sales s
+      JOIN products p ON s.product_id = p.product_id
+      WHERE p.store_id = $1
+        AND s.sale_date >= NOW() - INTERVAL '12 months'
+      GROUP BY EXTRACT(MONTH FROM s.sale_date), TO_CHAR(s.sale_date, 'Month')
+      ORDER BY month
+    `;
+
+    const result = await db.query(query, [storeId]);
+    return result.rows;
+  }
+
+  /**
+   * Get daily sales trends for trend analysis
+   */
+  static async getSalesTrends(storeId, days = 30) {
+    const query = `
+      SELECT 
+        DATE(s.sale_date) as sale_date,
+        SUM(s.quantity_sold) as total_quantity,
+        SUM(s.quantity_sold * COALESCE(p.selling_price, p.unit_cost * 1.5)) as daily_revenue,
+        COUNT(DISTINCT s.product_id) as unique_products,
+        COUNT(s.sale_id) as transaction_count
+      FROM sales s
+      JOIN products p ON s.product_id = p.product_id
+      WHERE p.store_id = $1
+        AND s.sale_date >= CURRENT_DATE - INTERVAL '${days} days'
+      GROUP BY DATE(s.sale_date)
+      ORDER BY sale_date
+    `;
+
+    const result = await db.query(query, [storeId]);
+    return result.rows;
+  }
 }
 
 module.exports = Sale;

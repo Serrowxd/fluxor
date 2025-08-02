@@ -119,9 +119,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     };
 
+    // Add a small delay to ensure proper state updates
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // Store in localStorage to persist across refreshes
     localStorage.setItem("demo_user", JSON.stringify(demoUser));
     setUser(demoUser);
+    
+    // Add another small delay to ensure state is properly set
+    await new Promise(resolve => setTimeout(resolve, 100));
   };
 
   const logout = async () => {

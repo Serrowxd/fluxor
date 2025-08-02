@@ -30,7 +30,10 @@
     "jsonwebtoken": "^9.0.2",
     "mailgun.js": "^9.3.0",
     "morgan": "^1.10.0",
+    "nodemailer": "^7.0.5",
+    "openai": "^4.104.0",
     "pg": "^8.11.3",
+    "rate-limit-redis": "^4.2.1",
     "redis": "^4.6.10",
     "uuid": "^9.0.1"
   },

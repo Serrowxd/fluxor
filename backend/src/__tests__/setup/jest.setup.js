@@ -1,5 +1,12 @@
 // Global Jest setup for all tests
 
+// Add TextEncoder/TextDecoder for Node.js environment
+if (typeof global.TextEncoder === 'undefined') {
+  const { TextEncoder, TextDecoder } = require('util');
+  global.TextEncoder = TextEncoder;
+  global.TextDecoder = TextDecoder;
+}
+
 // Mock bcrypt to avoid native module issues on Windows
 jest.mock("bcrypt", () => ({
   hash: jest.fn().mockResolvedValue("hashedPassword"),

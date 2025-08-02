@@ -23,23 +23,40 @@ class SupplierCommunicationService {
    */
   async initializeEmailTransporter() {
     try {
+      // Validate required email configuration
+      if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        console.warn("Email configuration missing - email notifications will be disabled");
+        this.emailTransporter = null;
+        return;
+      }
+
+      // Validate port is a number
+      const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+      if (isNaN(smtpPort)) {
+        console.error("Invalid SMTP_PORT configuration");
+        this.emailTransporter = null;
+        return;
+      }
+
       this.emailTransporter = nodemailer.createTransporter({
         host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: process.env.SMTP_PORT || 587,
-        secure: false,
+        port: smtpPort,
+        secure: smtpPort === 465,
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
+        tls: {
+          rejectUnauthorized: process.env.NODE_ENV === 'production'
+        }
       });
 
       // Verify connection
-      if (process.env.SMTP_USER) {
-        await this.emailTransporter.verify();
-        console.log("Email transporter initialized successfully");
-      }
+      await this.emailTransporter.verify();
+      console.log("Email transporter initialized successfully");
     } catch (error) {
       console.error("Failed to initialize email transporter:", error);
+      this.emailTransporter = null;
     }
   }
 
