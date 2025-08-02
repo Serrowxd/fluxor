@@ -190,7 +190,7 @@ export function StockoutTracker({
             </div>
             <div className="text-2xl font-bold">{highRiskProducts.length}</div>
             <p className="text-xs text-muted-foreground">
-              >10% stockout rate
+              &gt;10% stockout rate
             </p>
           </CardContent>
         </Card>

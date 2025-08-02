@@ -27,6 +27,9 @@ const supplierRoutes = require("./routes/suppliers");
 const purchaseOrderRoutes = require("./routes/purchase-orders");
 const approvalWorkflowRoutes = require("./routes/approval-workflows");
 
+// Chat routes
+const chatRoutes = require("./routes/chat");
+
 // Import middleware
 const { errorHandler } = require("./middleware/errorHandler");
 
@@ -45,10 +48,26 @@ app.use(
 );
 
 // Rate limiting
-const limiter = rateLimit({
+const { redisClient } = require("../config/redis");
+const RedisStore = require("rate-limit-redis");
+
+// Configure rate limiter
+const limiterConfig = {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-});
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+};
+
+// Use Redis store for distributed rate limiting if available
+if (redisClient && redisClient.isOpen) {
+  limiterConfig.store = new RedisStore({
+    client: redisClient,
+    prefix: "rl:",
+  });
+}
+
+const limiter = rateLimit(limiterConfig);
 app.use("/api/", limiter);
 
 // Logging
@@ -81,6 +100,9 @@ app.use("/api/multi-channel", multiChannelRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/purchase-orders", purchaseOrderRoutes);
 app.use("/api/approval-workflows", approvalWorkflowRoutes);
+
+// Chat API routes
+app.use("/api/v1/chat", chatRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { SalesChart } from "@/components/dashboard/sales-chart";
 import { InventoryChart } from "@/components/dashboard/inventory-chart";
 import { ReorderSuggestions } from "@/components/dashboard/reorder-suggestions";
@@ -39,50 +39,7 @@ export default function Content() {
   const isDemoUser = user?.user_id === "demo-user-456";
   const isDemoOrDevUser = isDevUser || isDemoUser;
 
-  useEffect(() => {
-    if (isDemoOrDevUser) {
-      // Load dummy data for development or demo
-      loadDummyData();
-    } else {
-      // Load real data from API
-      fetchDashboardData();
-    }
-  }, [isDemoOrDevUser]);
-
-  // Generate alerts based on inventory data
-  useEffect(() => {
-    const newAlerts: AlertItem[] = [];
-
-    // Check for low stock items
-    const lowStockItems = suggestions.filter((s) => s.urgency === "high");
-    if (lowStockItems.length > 0) {
-      newAlerts.push({
-        id: "low-stock",
-        type: "reorder",
-        message: `${lowStockItems.length} products need immediate reordering`,
-        link: "#",
-        linkText: "View Reorder Suggestions",
-        priority: "high",
-      });
-    }
-
-    // Check for medium urgency items
-    const mediumUrgencyItems = suggestions.filter(
-      (s) => s.urgency === "medium"
-    );
-    if (mediumUrgencyItems.length > 0) {
-      newAlerts.push({
-        id: "medium-stock",
-        type: "stock",
-        message: `${mediumUrgencyItems.length} products will need reordering soon`,
-        priority: "medium",
-      });
-    }
-
-    setAlerts(newAlerts);
-  }, [suggestions]);
-
-  const loadDummyData = () => {
+  const loadDummyData = useCallback(() => {
     // Set dummy data for development
     setHasStore(true);
     setLastSyncTime(new Date(Date.now() - 2 * 60 * 60 * 1000)); // 2 hours ago
@@ -292,9 +249,9 @@ export default function Content() {
     ]);
 
     setLoading(false);
-  };
+  }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       // Check if user has connected store
       const storesResponse = await fetch(
@@ -340,7 +297,50 @@ export default function Content() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast, loadDummyData]);
+
+  useEffect(() => {
+    if (isDemoOrDevUser) {
+      // Load dummy data for development or demo
+      loadDummyData();
+    } else {
+      // Load real data from API
+      fetchDashboardData();
+    }
+  }, [isDemoOrDevUser, fetchDashboardData, loadDummyData]);
+
+  // Generate alerts based on inventory data
+  useEffect(() => {
+    const newAlerts: AlertItem[] = [];
+
+    // Check for low stock items
+    const lowStockItems = suggestions.filter((s) => s.urgency === "high");
+    if (lowStockItems.length > 0) {
+      newAlerts.push({
+        id: "low-stock",
+        type: "reorder",
+        message: `${lowStockItems.length} products need immediate reordering`,
+        link: "#",
+        linkText: "View Reorder Suggestions",
+        priority: "high",
+      });
+    }
+
+    // Check for medium urgency items
+    const mediumUrgencyItems = suggestions.filter(
+      (s) => s.urgency === "medium"
+    );
+    if (mediumUrgencyItems.length > 0) {
+      newAlerts.push({
+        id: "medium-stock",
+        type: "stock",
+        message: `${mediumUrgencyItems.length} products will need reordering soon`,
+        priority: "medium",
+      });
+    }
+
+    setAlerts(newAlerts);
+  }, [suggestions]);
 
   const handleSync = async () => {
     setSyncing(true);

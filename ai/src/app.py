@@ -20,13 +20,20 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 
-# Initialize Redis client
-redis_client = redis.Redis(
-    host=os.getenv('REDIS_HOST', 'localhost'),
-    port=int(os.getenv('REDIS_PORT', 6379)),
-    db=0,
-    decode_responses=True
-)
+# Initialize Redis client with error handling
+try:
+    redis_client = redis.Redis(
+        host=os.getenv('REDIS_HOST', 'localhost'),
+        port=int(os.getenv('REDIS_PORT', 6379)),
+        db=0,
+        decode_responses=True
+    )
+    # Test connection
+    redis_client.ping()
+    logger.info("Redis connection established successfully")
+except redis.ConnectionError:
+    logger.warning("Redis connection failed - caching will be disabled")
+    redis_client = None
 
 # Constants
 MIN_DATA_POINTS = 30
@@ -58,10 +65,14 @@ def generate_forecast():
         
         # Check cache first
         cache_key = f"forecast:{product_id}:{forecast_horizon}:{len(external_factors)}"
-        cached_result = redis_client.get(cache_key)
-        if cached_result:
-            logger.info(f"Returning cached forecast for product {product_id}")
-            return jsonify(json.loads(cached_result))
+        if redis_client:
+            try:
+                cached_result = redis_client.get(cache_key)
+                if cached_result:
+                    logger.info(f"Returning cached forecast for product {product_id}")
+                    return jsonify(json.loads(cached_result))
+            except Exception as e:
+                logger.warning(f"Cache retrieval failed: {str(e)}")
         
         # Prepare data for Prophet
         df = pd.DataFrame(sales_data)
@@ -103,7 +114,11 @@ def generate_forecast():
         }
         
         # Cache the result
-        redis_client.setex(cache_key, CACHE_TTL, json.dumps(response))
+        if redis_client:
+            try:
+                redis_client.setex(cache_key, CACHE_TTL, json.dumps(response))
+            except Exception as e:
+                logger.warning(f"Failed to cache result: {str(e)}")
         
         return jsonify(response)
         
@@ -163,38 +178,43 @@ def analyze_seasonal_patterns():
 
 def generate_prophet_forecast(df, days_ahead):
     """Generate forecast using Prophet"""
-    # Initialize and fit the model
-    model = Prophet(
-        daily_seasonality=True,
-        weekly_seasonality=True,
-        yearly_seasonality=False,  # Disable if less than 2 years of data
-        changepoint_prior_scale=0.05
-    )
-    
-    # Suppress Prophet's verbose output
-    with suppress_stdout_stderr():
-        model.fit(df)
-    
-    # Make future dataframe
-    future = model.make_future_dataframe(periods=days_ahead)
-    
-    # Generate forecast
-    forecast = model.predict(future)
-    
-    # Extract relevant columns for the future dates only
-    future_forecast = forecast[forecast['ds'] > df['ds'].max()][['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
-    
-    # Format the forecast
-    formatted_forecast = []
-    for _, row in future_forecast.iterrows():
-        formatted_forecast.append({
-            'date': row['ds'].strftime('%Y-%m-%d'),
-            'predicted_demand': max(0, round(row['yhat'], 2)),  # Ensure non-negative
-            'lower_bound': max(0, round(row['yhat_lower'], 2)),
-            'upper_bound': max(0, round(row['yhat_upper'], 2))
-        })
-    
-    return formatted_forecast
+    try:
+        # Initialize and fit the model
+        model = Prophet(
+            daily_seasonality=True,
+            weekly_seasonality=True,
+            yearly_seasonality=False,  # Disable if less than 2 years of data
+            changepoint_prior_scale=0.05
+        )
+        
+        # Suppress Prophet's verbose output
+        with suppress_stdout_stderr():
+            model.fit(df)
+        
+        # Make future dataframe
+        future = model.make_future_dataframe(periods=days_ahead)
+        
+        # Generate forecast
+        forecast = model.predict(future)
+        
+        # Extract relevant columns for the future dates only
+        future_forecast = forecast[forecast['ds'] > df['ds'].max()][['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+        
+        # Format the forecast
+        formatted_forecast = []
+        for _, row in future_forecast.iterrows():
+            formatted_forecast.append({
+                'date': row['ds'].strftime('%Y-%m-%d'),
+                'predicted_demand': max(0, round(row['yhat'], 2)),  # Ensure non-negative
+                'lower_bound': max(0, round(row['yhat_lower'], 2)),
+                'upper_bound': max(0, round(row['yhat_upper'], 2))
+            })
+        
+        return formatted_forecast
+    except Exception as e:
+        logger.error(f"Error in Prophet forecast: {str(e)}")
+        # Fallback to moving average
+        return generate_moving_average_forecast(df, days_ahead)
 
 def generate_moving_average_forecast(df, days_ahead):
     """Generate forecast using simple moving average"""
@@ -219,73 +239,87 @@ def generate_moving_average_forecast(df, days_ahead):
 
 def generate_enhanced_prophet_forecast(df: pd.DataFrame, days_ahead: int, external_factors: List[Dict] = None) -> List[Dict]:
     """Generate enhanced forecast using Prophet with external factors"""
-    # Initialize Prophet with enhanced settings
-    model = Prophet(
-        daily_seasonality=True,
-        weekly_seasonality=True,
-        yearly_seasonality=len(df) > 365,  # Enable yearly seasonality if we have enough data
-        changepoint_prior_scale=0.05,
-        seasonality_prior_scale=10.0,
-        holidays_prior_scale=10.0,
-        interval_width=0.8
-    )
-    
-    # Add external factors as regressors
-    if external_factors:
-        for factor in external_factors:
-            model.add_regressor(
-                factor['name'], 
-                prior_scale=factor.get('prior_scale', 10.0),
-                standardize=factor.get('standardize', True)
-            )
-    
-    # Add custom seasonalities
-    model.add_seasonality(name='monthly', period=30.5, fourier_order=5)
-    model.add_seasonality(name='quarterly', period=91.25, fourier_order=8, condition_name='is_quarter_end')
-    
-    # Prepare data with external factors
-    if external_factors:
-        for factor in external_factors:
-            df[factor['name']] = factor.get('values', [0] * len(df))
-    
-    # Add quarter end indicator
-    df['is_quarter_end'] = df['ds'].dt.month.isin([3, 6, 9, 12])
-    
-    # Suppress Prophet's verbose output
-    with suppress_stdout_stderr():
-        model.fit(df)
-    
-    # Make future dataframe
-    future = model.make_future_dataframe(periods=days_ahead)
-    
-    # Add external factors to future dataframe
-    if external_factors:
-        for factor in external_factors:
-            future_values = factor.get('future_values', [factor.get('default_value', 0)] * days_ahead)
-            current_values = factor.get('values', [0] * len(df))
-            future[factor['name']] = current_values + future_values
-    
-    # Add quarter end indicator to future
-    future['is_quarter_end'] = future['ds'].dt.month.isin([3, 6, 9, 12])
-    
-    # Generate forecast
-    forecast = model.predict(future)
-    
-    # Extract relevant columns for the future dates only
-    future_forecast = forecast[forecast['ds'] > df['ds'].max()][['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
-    
-    # Format the forecast
-    formatted_forecast = []
-    for _, row in future_forecast.iterrows():
-        formatted_forecast.append({
-            'date': row['ds'].strftime('%Y-%m-%d'),
-            'predicted_demand': max(0, round(row['yhat'], 2)),
-            'lower_bound': max(0, round(row['yhat_lower'], 2)),
-            'upper_bound': max(0, round(row['yhat_upper'], 2)),
-            'confidence_interval_width': round(row['yhat_upper'] - row['yhat_lower'], 2)
-        })
-    
-    return formatted_forecast
+    try:
+        # Initialize Prophet with enhanced settings
+        model = Prophet(
+            daily_seasonality=True,
+            weekly_seasonality=True,
+            yearly_seasonality=len(df) > 365,  # Enable yearly seasonality if we have enough data
+            changepoint_prior_scale=0.05,
+            seasonality_prior_scale=10.0,
+            holidays_prior_scale=10.0,
+            interval_width=0.8
+        )
+        
+        # Add external factors as regressors
+        if external_factors:
+            for factor in external_factors:
+                try:
+                    model.add_regressor(
+                        factor['name'], 
+                        prior_scale=factor.get('prior_scale', 10.0),
+                        standardize=factor.get('standardize', True)
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to add regressor {factor['name']}: {str(e)}")
+        
+        # Add custom seasonalities
+        try:
+            model.add_seasonality(name='monthly', period=30.5, fourier_order=5)
+            model.add_seasonality(name='quarterly', period=91.25, fourier_order=8, condition_name='is_quarter_end')
+        except Exception as e:
+            logger.warning(f"Failed to add custom seasonalities: {str(e)}")
+        
+        # Prepare data with external factors
+        if external_factors:
+            for factor in external_factors:
+                df[factor['name']] = factor.get('values', [0] * len(df))
+        
+        # Add quarter end indicator
+        df['is_quarter_end'] = df['ds'].dt.month.isin([3, 6, 9, 12])
+        
+        # Suppress Prophet's verbose output
+        with suppress_stdout_stderr():
+            model.fit(df)
+        
+        # Make future dataframe
+        future = model.make_future_dataframe(periods=days_ahead)
+        
+        # Add external factors to future dataframe
+        if external_factors:
+            for factor in external_factors:
+                future_values = factor.get('future_values', [factor.get('default_value', 0)] * days_ahead)
+                current_values = factor.get('values', [0] * len(df))
+                future[factor['name']] = current_values + future_values
+        
+        # Add quarter end indicator to future
+        future['is_quarter_end'] = future['ds'].dt.month.isin([3, 6, 9, 12])
+        
+        # Generate forecast
+        forecast = model.predict(future)
+        
+        # Extract relevant columns for the future dates only
+        future_forecast = forecast[forecast['ds'] > df['ds'].max()][['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+        
+        # Format the forecast
+        formatted_forecast = []
+        for _, row in future_forecast.iterrows():
+            formatted_forecast.append({
+                'date': row['ds'].strftime('%Y-%m-%d'),
+                'predicted_demand': max(0, round(row['yhat'], 2)),
+                'lower_bound': max(0, round(row['yhat_lower'], 2)),
+                'upper_bound': max(0, round(row['yhat_upper'], 2)),
+                'confidence_interval_width': round(row['yhat_upper'] - row['yhat_lower'], 2)
+            })
+        
+        return formatted_forecast
+    except Exception as e:
+        logger.error(f"Error in enhanced Prophet forecast: {str(e)}")
+        # Fallback to simple Prophet or moving average
+        try:
+            return generate_prophet_forecast(df, days_ahead)
+        except:
+            return generate_moving_average_forecast(df, days_ahead)
 
 def generate_multi_step_forecast(df: pd.DataFrame, external_factors: List[Dict] = None) -> Dict[str, List[Dict]]:
     """Generate multi-step ahead forecasts (1, 4, 12 weeks)"""
@@ -439,6 +473,44 @@ class suppress_stdout_stderr:
         os.close(self.old_stdout)
         os.close(self.old_stderr)
 
+def check_dependencies():
+    """Check if all required dependencies are available"""
+    required_packages = {
+        'flask': 'Flask',
+        'prophet': 'Prophet',
+        'pandas': 'pandas',
+        'redis': 'redis',
+        'numpy': 'numpy'
+    }
+    
+    missing_packages = []
+    for package, name in required_packages.items():
+        try:
+            __import__(package)
+            logger.info(f"✓ {name} is installed")
+        except ImportError:
+            missing_packages.append(name)
+            logger.error(f"✗ {name} is not installed")
+    
+    if missing_packages:
+        logger.error(f"Missing required packages: {', '.join(missing_packages)}")
+        logger.error("Please install missing packages with: pip install -r requirements.txt")
+        return False
+    
+    # Check Redis connection
+    if redis_client:
+        logger.info("✓ Redis connection established")
+    else:
+        logger.warning("✗ Redis connection failed - caching disabled")
+    
+    return True
+
 if __name__ == '__main__':
+    # Check dependencies before starting
+    if not check_dependencies():
+        logger.error("Dependency check failed. Please install missing packages.")
+        exit(1)
+    
     port = int(os.getenv('PORT', 5000))
+    logger.info(f"Starting Flask app on port {port}")
     app.run(host='0.0.0.0', port=port, debug=os.getenv('FLASK_ENV') == 'development')

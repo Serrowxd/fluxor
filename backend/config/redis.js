@@ -73,6 +73,84 @@ const supplierPerformanceQueue = new Queue(
   process.env.REDIS_URL
 );
 
+// Chat system queues
+const chatContextQueue = new Queue("chat-context", process.env.REDIS_URL);
+const chatAnalyticsQueue = new Queue("chat-analytics", process.env.REDIS_URL);
+
+// Chat caching configuration
+const CHAT_CACHE_TTL = {
+  CONTEXT: 300, // 5 minutes for chat context
+  CONVERSATION: 3600, // 1 hour for conversation history
+  USER_STATS: 86400, // 24 hours for user analytics
+};
+
+// Chat caching helper functions
+const chatCache = {
+  async setContext(userId, storeId, context) {
+    const key = `chat:context:${userId}:${storeId}`;
+    await redisClient.setEx(key, CHAT_CACHE_TTL.CONTEXT, JSON.stringify(context));
+  },
+
+  async getContext(userId, storeId) {
+    const key = `chat:context:${userId}:${storeId}`;
+    const data = await redisClient.get(key);
+    return data ? JSON.parse(data) : null;
+  },
+
+  async setConversation(conversationId, messages) {
+    const key = `chat:conversation:${conversationId}`;
+    await redisClient.setEx(key, CHAT_CACHE_TTL.CONVERSATION, JSON.stringify(messages));
+  },
+
+  async getConversation(conversationId) {
+    const key = `chat:conversation:${conversationId}`;
+    const data = await redisClient.get(key);
+    return data ? JSON.parse(data) : null;
+  },
+
+  async invalidateConversation(conversationId) {
+    const key = `chat:conversation:${conversationId}`;
+    await redisClient.del(key);
+  },
+
+  async setUserStats(userId, stats) {
+    const key = `chat:stats:${userId}`;
+    await redisClient.setEx(key, CHAT_CACHE_TTL.USER_STATS, JSON.stringify(stats));
+  },
+
+  async getUserStats(userId) {
+    const key = `chat:stats:${userId}`;
+    const data = await redisClient.get(key);
+    return data ? JSON.parse(data) : null;
+  },
+
+  async incrementUserRequests(userId) {
+    const dayKey = `chat:requests:${userId}:${new Date().toISOString().split('T')[0]}`;
+    const minuteKey = `chat:requests:${userId}:minute:${Math.floor(Date.now() / 60000)}`;
+    
+    await redisClient.incr(dayKey);
+    await redisClient.expire(dayKey, 86400); // Expire after 24 hours
+    
+    await redisClient.incr(minuteKey);
+    await redisClient.expire(minuteKey, 60); // Expire after 1 minute
+  },
+
+  async getUserRequestCounts(userId) {
+    const dayKey = `chat:requests:${userId}:${new Date().toISOString().split('T')[0]}`;
+    const minuteKey = `chat:requests:${userId}:minute:${Math.floor(Date.now() / 60000)}`;
+    
+    const [daily, perMinute] = await Promise.all([
+      redisClient.get(dayKey),
+      redisClient.get(minuteKey)
+    ]);
+
+    return {
+      daily: parseInt(daily || '0'),
+      perMinute: parseInt(perMinute || '0')
+    };
+  }
+};
+
 module.exports = {
   redisClient,
   // Original queues
@@ -97,4 +175,10 @@ module.exports = {
   supplierCommunicationQueue,
   automatedReorderQueue,
   supplierPerformanceQueue,
+  // Chat system queues
+  chatContextQueue,
+  chatAnalyticsQueue,
+  // Chat caching utilities
+  chatCache,
+  CHAT_CACHE_TTL,
 };
