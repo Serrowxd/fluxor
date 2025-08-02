@@ -33,6 +33,7 @@ A comprehensive, AI-powered inventory management platform designed for small and
 - 🎨 **Modern UI**: Dark theme with responsive, accessible components
 - ⚡ **Real-time Updates**: Live data synchronization and notifications
 - 🔍 **Advanced Search**: Full-text search with filters and sorting
+- 🤖 **AI Assistant**: Integrated Claude-powered chatbot for inventory insights and assistance
 
 ## 🏗️ Architecture
 
@@ -68,6 +69,7 @@ A comprehensive, AI-powered inventory management platform designed for small and
 - **Forecasting**: Python microservice with Prophet, ARIMA, and ensemble models
 - **Model Management**: Automated retraining and performance tracking
 - **External Factors**: Integration with weather, economic, and seasonal data
+- **Claude Integration**: Anthropic's Claude API for intelligent inventory assistant
 
 ## 📦 Installation
 
@@ -178,7 +180,8 @@ fluxor/
 ├── components/                  # React component library
 │   ├── dashboard/               # Dashboard-specific components
 │   ├── ui/                      # Reusable UI components (shadcn/ui)
-│   └── fluxor/                  # Custom Fluxor components
+│   ├── fluxor/                  # Custom Fluxor components
+│   └── chat/                    # AI chatbot components
 ├── modules/                     # Modular refactor in progress
 │   ├── api-gateway/             # API gateway module (empty)
 │   ├── business-domains/        # Domain-driven modules
@@ -195,6 +198,7 @@ fluxor/
 │   ├── feature_design.md        # Feature implementation strategy
 │   ├── feature_considerations.md # Security and scalability considerations
 │   ├── modular_refactor_*.md    # Modular refactor documentation
+│   ├── chatbot_*.md             # AI chatbot design and implementation
 │   └── tickets/                 # Implementation guides and summaries
 └── CLAUDE.md                    # AI assistant guidance and commands
 ```
@@ -255,6 +259,9 @@ REDIS_URL=redis://host:port
 JWT_SECRET=your-super-secret-jwt-key
 JWT_REFRESH_SECRET=your-refresh-secret
 
+# AI Services
+ANTHROPIC_API_KEY=your-anthropic-api-key
+
 # Shopify Integration
 SHOPIFY_API_KEY=your-shopify-api-key
 SHOPIFY_API_SECRET=your-shopify-api-secret
@@ -302,6 +309,9 @@ DATADOG_API_KEY=your-datadog-key
 - **Background Jobs**: Bull queue setup for async processing
 - **Security Framework**: Input validation, rate limiting, and secure authentication
 - **Test Suite**: 95%+ backend test coverage with comprehensive unit tests
+- **AI Chatbot**: Claude-powered assistant with context-aware inventory help
+- **Chat Interface**: Floating chat widget with conversation history
+- **Demo Mode**: Interactive demo with sample data for exploration
 
 #### 🔄 In Progress
 

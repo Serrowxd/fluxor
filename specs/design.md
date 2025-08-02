@@ -9,6 +9,7 @@ The Inventory Forecasting Dashboard is a SaaS web application designed for small
 - Implement AI-driven demand forecasting using Facebook's Prophet.
 - Send automated email alerts for low stock levels.
 - Enable users to download inventory reports in CSV format.
+- Provide an intelligent AI assistant for real-time inventory insights and support.
 
 ## Scope (MVP)
 - **Integration**: Shopify only.
@@ -23,9 +24,11 @@ The Inventory Forecasting Dashboard is a SaaS web application designed for small
 - **Database**: PostgreSQL for structured data storage (scalable and reliable for MVP).
 - **AI Model**: Python microservice using Prophet for forecasting.
 - **Message Queue**: Redis to handle Shopify API rate limiting and async tasks.
+- **AI Assistant**: Claude API integration for intelligent inventory assistance.
 - **APIs**:
   - **Shopify API**: Fetch sales and inventory data.
   - **Mailgun API**: Send email alerts.
+  - **Anthropic API**: Claude for conversational AI.
 - **Hosting**: Vercel for frontend and backend (serverless functions for API); Heroku for the Python microservice.
 
 ## Edge Cases and Mitigations
@@ -62,6 +65,14 @@ To ensure robustness, the following edge cases are addressed:
 - **User Input Errors**:
   - **Issue**: Invalid Shopify credentials or misconfigured settings could break integration.
   - **Mitigation**: Validate inputs during setup. Display error messages using existing error handling components.
+
+- **AI Assistant Rate Limiting**:
+  - **Issue**: Claude API has rate limits that could affect chatbot responsiveness.
+  - **Mitigation**: Implement request queuing and graceful degradation. Cache common responses. Show typing indicators during processing.
+
+- **Chat Context Management**:
+  - **Issue**: Long conversations could exceed token limits or lose context.
+  - **Mitigation**: Implement conversation summarization and sliding window context. Store conversation history in database for continuity.
 
 ## Data Model
 The PostgreSQL schema is designed for scalability and efficient querying, compatible with the existing project.
@@ -263,7 +274,7 @@ The frontend leverages the existing project’s styling and UI components, ensur
   ```
 - **Dependencies**:
   - Frontend: `next`, `chart.js`, `react-chartjs-2`, `swr`, `date-fns` (extend existing dependencies).
-  - Backend: `express`, `jsonwebtoken`, `bcrypt`, `pg`, `bull`, `crypto`.
+  - Backend: `express`, `jsonwebtoken`, `bcrypt`, `pg`, `bull`, `crypto`, `@anthropic-ai/sdk`.
   - AI: `flask`, `fbprophet`, `pandas`, `redis`.
 - **Environment Variables**:
   - `DATABASE_URL`: PostgreSQL connection string.
@@ -271,6 +282,7 @@ The frontend leverages the existing project’s styling and UI components, ensur
   - `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`: Mailgun credentials.
   - `JWT_SECRET`: For token signing.
   - `REDIS_URL`: Redis connection.
+  - `ANTHROPIC_API_KEY`: Claude API access.
 
 ### 2. Authentication
 - Extend existing authentication system:
@@ -334,6 +346,31 @@ The frontend leverages the existing project’s styling and UI components, ensur
 - **Download**:
   - Serve CSV via `/api/reports/download` endpoint.
   - Use temporary signed URLs for security, integrated with existing download logic.
+
+### 8. AI Assistant (Claude Integration)
+- **Architecture**:
+  - Backend service handles Claude API calls with proper authentication.
+  - WebSocket or polling for real-time chat experience.
+  - Context-aware responses using inventory data and user history.
+- **Features**:
+  - Natural language queries about inventory levels, trends, and predictions.
+  - Proactive suggestions based on current data patterns.
+  - Multi-turn conversations with context retention.
+  - Integration with existing dashboard actions (view products, generate reports).
+- **UI Components**:
+  - Floating chat widget with minimize/maximize functionality.
+  - Message history with sender attribution.
+  - Typing indicators and loading states.
+  - Quick action buttons for common queries.
+- **Security**:
+  - API key stored securely in environment variables.
+  - User-specific conversation isolation.
+  - Input sanitization to prevent prompt injection.
+  - Rate limiting per user to prevent abuse.
+- **Data Flow**:
+  - User sends message → Backend validates → Enriches with context → Calls Claude API → Formats response → Returns to frontend.
+  - Conversation history stored in PostgreSQL with user association.
+  - Recent context cached in Redis for performance.
 
 ## Testing Strategy
 - **Unit Tests** (Jest):
