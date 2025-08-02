@@ -377,14 +377,24 @@ The frontend leverages the existing project’s styling and UI components, ensur
   - Test authentication logic (signup, login), extending existing test suite.
   - Test data transformation for forecasting.
   - Test new component rendering.
+  - Test chatbot services:
+    - Chat context builder with inventory data enrichment
+    - Prompt engineering for optimal Claude responses
+    - OpenAI service integration (for compatibility)
+    - Cache configuration and performance
+    - Database migrations for chat tables
 - **Integration Tests** (Supertest):
   - Test API endpoints with mock Shopify responses.
   - Test webhook processing, using existing test mocks.
+  - Test chat API endpoints with mock Claude responses.
+  - Test conversation persistence and retrieval.
 - **E2E Tests** (Cypress):
   - Test user flows: signup, Shopify connect, dashboard view, report download, using existing test setup.
+  - Test chat interactions: open chat, send message, receive response.
 - **Load Testing**:
   - Simulate 100 concurrent users syncing stores.
   - Test Redis queue under high load.
+  - Test chat service under concurrent conversations.
 
 ## Deployment
 - **Frontend/Backend**: Vercel (serverless functions for API routes), aligning with existing deployment.

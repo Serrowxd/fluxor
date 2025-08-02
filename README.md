@@ -312,6 +312,9 @@ DATADOG_API_KEY=your-datadog-key
 - **AI Chatbot**: Claude-powered assistant with context-aware inventory help
 - **Chat Interface**: Floating chat widget with conversation history
 - **Demo Mode**: Interactive demo with sample data for exploration
+- **Chatbot Testing**: Unit tests for chat context builder, prompt engineering, and OpenAI service
+- **Migration Tests**: Database migration tests for chatbot tables
+- **Cache Testing**: Redis cache configuration tests for chat performance
 
 #### 🔄 In Progress
 
