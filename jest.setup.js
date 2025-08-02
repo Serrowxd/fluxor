@@ -10,3 +10,14 @@ if (typeof global.TextEncoder === 'undefined') {
 
 // Mock scrollIntoView for tests
 Element.prototype.scrollIntoView = jest.fn()
+
+// Mock react-markdown
+jest.mock('react-markdown', () => {
+  const React = require('react')
+  return {
+    __esModule: true,
+    default: function ReactMarkdown({ children }) {
+      return React.createElement('div', null, children)
+    }
+  }
+})
