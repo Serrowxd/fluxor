@@ -1,5 +1,7 @@
 # Fluxor - Enterprise Inventory Management System
 
+> ⚠️ **ARCHIVED PROJECT - REFERENCE ONLY**: This project is no longer maintained and is provided solely for reference purposes. No support, updates, or pull requests will be accepted. The code may not be functional and should not be used in production.
+
 A comprehensive, AI-powered inventory management platform designed for small and medium enterprises (SMEs) that need advanced inventory forecasting, multi-channel synchronization, and automated supplier management. Built with enterprise-grade security, scalability, and modern UI/UX principles.
 
 ## 🚀 Features
@@ -385,38 +387,17 @@ cd backend && npm test           # Run tests
 - Maintain test coverage above 90%
 - Never commit sensitive data or credentials
 
-## 🤝 Contributing
+## ❌ Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes and add tests
-4. Run the test suite: `npm test`
-5. Commit your changes: `git commit -m 'Add amazing feature'`
-6. Push to the branch: `git push origin feature/amazing-feature`
-7. Open a Pull Request
-
-### Code Standards
-
-- **TypeScript**: Strict mode with comprehensive type definitions
-- **ESLint**: Enforced code style and best practices
-- **Prettier**: Consistent code formatting
-- **Testing**: Minimum 90% test coverage required
-- **Documentation**: JSDoc comments for all public APIs
+**This project is archived and not accepting contributions.** Pull requests, issues, and other contributions will not be reviewed or merged.
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## ❌ Support
 
-- **Documentation**: [docs.fluxor.com](https://docs.fluxor.com)
-- **Issues**: [GitHub Issues](https://github.com/your-org/fluxor/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/fluxor/discussions)
-- **Email**: support@fluxor.com
+**No support is provided for this archived project.** Issues and discussions may remain visible for reference but will not receive responses.
 
 ## 🙏 Acknowledgments
 
